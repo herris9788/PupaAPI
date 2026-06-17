@@ -13,15 +13,13 @@ namespace Pupa.Configs
             if (operation.Parameters == null)
                 operation.Parameters = new List<OpenApiParameter>();
 
-            //if(context.ApiDescription.HttpMethod == "GET")
-            //{
-            //operation.Parameters.Add(new OpenApiParameter
-            //{
-            //    Name = "X-API-DB",
-            //    In = ParameterLocation.Header,
-            //    Required = false
-            //});
-            //}
+            operation.Parameters.Add(new OpenApiParameter
+            {
+                Name = "X-API-DB",
+                Description = "Target database key (default: Beesuite)",
+                In = ParameterLocation.Header,
+                Required = false
+            });
             if (context.MethodInfo.Name == "Get")
             {
                 operation.Parameters.Add(new OpenApiParameter

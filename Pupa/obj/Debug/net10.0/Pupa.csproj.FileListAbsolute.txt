@@ -594,3 +594,4 @@ D:\Projects\PupaAPI\tmp\pupa-build-check\Pupa.deps.json
 D:\Projects\PupaAPI\tmp\pupa-build-check\Pupa.runtimeconfig.json
 D:\Projects\PupaAPI\tmp\pupa-build-check\Pupa.dll
 D:\Projects\PupaAPI\tmp\pupa-build-check\Pupa.pdb
+D:\Projects\PupaAPI\Pupa\obj\Debug\net10.0\staticwebassets.upToDateCheck.txt

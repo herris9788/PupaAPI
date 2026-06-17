@@ -33,11 +33,12 @@ namespace Pupa
             AppContext.SetSwitch("Npgsql.DisableDateTimeInfinityConversions", true);
             services.AddLocalization();
 
-            var connectionString = Configuration.GetConnectionString("Beesuite");
-            ArgumentNullException.ThrowIfNull(connectionString);
-            services.AddDbContext<BeesuiteDbContext>(options =>
+            services.AddHttpContextAccessor();
+            services.AddScoped<BeesuiteConnectionResolver>();
+            services.AddDbContext<BeesuiteDbContext>((sp, options) =>
             {
-                options.UseNpgsql(connectionString);
+                var conn = sp.GetRequiredService<BeesuiteConnectionResolver>().ConnectionString;
+                options.UseNpgsql(conn);
                 options.UseLazyLoadingProxies();
             });
 

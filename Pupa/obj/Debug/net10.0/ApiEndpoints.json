@@ -397,6 +397,16 @@
         "Name": "qtyRequest",
         "Type": "System.Decimal",
         "IsRequired": false
+      },
+      {
+        "Name": "includeVoid",
+        "Type": "System.Boolean",
+        "IsRequired": false
+      },
+      {
+        "Name": "includePending",
+        "Type": "System.Boolean",
+        "IsRequired": false
       }
     ],
     "ReturnTypes": []
