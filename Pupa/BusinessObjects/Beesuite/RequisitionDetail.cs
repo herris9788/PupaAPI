@@ -268,6 +268,66 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+        private DateTime? _FreonLastRequestDate { get; set; }
+        public virtual DateTime? FreonLastRequestDate
+        {
+            get => _FreonLastRequestDate;
+            set
+            {
+                if (_FreonLastRequestDate == value) return;
+                OnPropertyChanging();
+                _FreonLastRequestDate = value;
+                OnPropertyChanged();
+            }
+        }
+        private int? _FreonIntervalDays { get; set; }
+        public virtual int? FreonIntervalDays
+        {
+            get => _FreonIntervalDays;
+            set
+            {
+                if (_FreonIntervalDays == value) return;
+                OnPropertyChanging();
+                _FreonIntervalDays = value;
+                OnPropertyChanged();
+            }
+        }
+        private bool? _FreonDamageReportRequired { get; set; }
+        public virtual bool? FreonDamageReportRequired
+        {
+            get => _FreonDamageReportRequired;
+            set
+            {
+                if (_FreonDamageReportRequired == value) return;
+                OnPropertyChanging();
+                _FreonDamageReportRequired = value;
+                OnPropertyChanged();
+            }
+        }
+        private string? _FreonSystem { get; set; }
+        public virtual string? FreonSystem
+        {
+            get => _FreonSystem;
+            set
+            {
+                if (_FreonSystem == value) return;
+                OnPropertyChanging();
+                _FreonSystem = value;
+                OnPropertyChanged();
+            }
+        }
+        private string? _FreonEvaluationScenario { get; set; }
+        public virtual string? FreonEvaluationScenario
+        {
+            get => _FreonEvaluationScenario;
+            set
+            {
+                if (_FreonEvaluationScenario == value) return;
+                OnPropertyChanging();
+                _FreonEvaluationScenario = value;
+                OnPropertyChanged();
+            }
+        }
         private string? _Comments { get; set; }
         public virtual string? Comments
         {
