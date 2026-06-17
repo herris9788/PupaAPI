@@ -140,7 +140,6 @@ namespace Pupa.Controllers
             return Ok(new
             {
                 LastRequestDate = lastRequestDate,
-                LastRequestDays = intervalDays,
                 FreonIntervalDays = intervalDays,
                 FreonDamageReportRequired = damageReportRequired,
                 FreonSystem = InferFreonSystem(area),

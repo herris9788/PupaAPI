@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Pupa")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b92e667f3ee45148a0647bce53ef73af39f9d3b1")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d6d9abe72f5f1ca3baffa2b295ee74b33672fcd6")]
 [assembly: System.Reflection.AssemblyProductAttribute("Pupa")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Pupa")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
