@@ -371,6 +371,37 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "Pupa.Controllers.RequisitionController",
+    "Method": "GetFreonLastRequest",
+    "RelativePath": "beesuite/api/Requisition/FreonLastRequest",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "vesselID",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "itemID",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "placementArea",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "qtyRequest",
+        "Type": "System.Decimal",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "Pupa.Controllers.UserController",
     "Method": "Login",
     "RelativePath": "beesuite/api/User/login",

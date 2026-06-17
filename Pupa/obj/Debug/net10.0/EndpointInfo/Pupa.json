@@ -46620,6 +46620,52 @@
         }
       }
     },
+    "/beesuite/api/Requisition/FreonLastRequest": {
+      "get": {
+        "tags": [
+          "Requisition"
+        ],
+        "parameters": [
+          {
+            "name": "vesselID",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "itemID",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "placementArea",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "qtyRequest",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "format": "double",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/beesuite/odata/Requisition": {
       "get": {
         "tags": [
@@ -77162,10 +77208,6 @@
           "IsReadonly": {
             "type": "boolean"
           },
-          "Tags": {
-            "type": "string",
-            "nullable": true
-          },
           "CreatedAt": {
             "type": "string",
             "format": "date-time"
@@ -82576,6 +82618,28 @@
             "nullable": true
           },
           "PlacementArea": {
+            "type": "string",
+            "nullable": true
+          },
+          "FreonLastRequestDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "FreonIntervalDays": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "FreonDamageReportRequired": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "FreonSystem": {
+            "type": "string",
+            "nullable": true
+          },
+          "FreonEvaluationScenario": {
             "type": "string",
             "nullable": true
           },
