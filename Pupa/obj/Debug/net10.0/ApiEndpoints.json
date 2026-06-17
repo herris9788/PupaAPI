@@ -1129,6 +1129,201 @@
     "EndpointName": "beesuite/odata/Approval/$count"
   },
   {
+    "ContainingType": "Pupa.Configs.CustomDataController\u00601[[Pupa.BusinessObjects.Beesuite.AppSetting, Pupa, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+    "Method": "Get",
+    "RelativePath": "beesuite/odata/AppSetting",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [],
+    "EndpointName": "beesuite/odata/AppSetting"
+  },
+  {
+    "ContainingType": "Pupa.Configs.CustomDataController\u00601[[Pupa.BusinessObjects.Beesuite.AppSetting, Pupa, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+    "Method": "Post",
+    "RelativePath": "beesuite/odata/AppSetting",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "value",
+        "Type": "Pupa.BusinessObjects.Beesuite.AppSetting",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [],
+    "EndpointName": "beesuite/odata/AppSetting"
+  },
+  {
+    "ContainingType": "Pupa.Configs.CustomDataController\u00601[[Pupa.BusinessObjects.Beesuite.AppSetting, Pupa, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+    "Method": "Get",
+    "RelativePath": "beesuite/odata/AppSetting({key})",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "key",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [],
+    "EndpointName": "beesuite/odata/AppSetting({key})"
+  },
+  {
+    "ContainingType": "Pupa.Configs.CustomDataController\u00601[[Pupa.BusinessObjects.Beesuite.AppSetting, Pupa, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+    "Method": "Patch",
+    "RelativePath": "beesuite/odata/AppSetting({key})",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "key",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "patch",
+        "Type": "Microsoft.AspNetCore.OData.Deltas.Delta\u00601[[Pupa.BusinessObjects.Beesuite.AppSetting, Pupa, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [],
+    "EndpointName": "beesuite/odata/AppSetting({key})"
+  },
+  {
+    "ContainingType": "Pupa.Configs.CustomDataController\u00601[[Pupa.BusinessObjects.Beesuite.AppSetting, Pupa, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+    "Method": "Put",
+    "RelativePath": "beesuite/odata/AppSetting({key})",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "key",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "update",
+        "Type": "Pupa.BusinessObjects.Beesuite.AppSetting",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [],
+    "EndpointName": "beesuite/odata/AppSetting({key})"
+  },
+  {
+    "ContainingType": "Pupa.Configs.CustomDataController\u00601[[Pupa.BusinessObjects.Beesuite.AppSetting, Pupa, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+    "Method": "Delete",
+    "RelativePath": "beesuite/odata/AppSetting({key})",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "key",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [],
+    "EndpointName": "beesuite/odata/AppSetting({key})"
+  },
+  {
+    "ContainingType": "Pupa.Configs.CustomDataController\u00601[[Pupa.BusinessObjects.Beesuite.AppSetting, Pupa, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+    "Method": "Get",
+    "RelativePath": "beesuite/odata/AppSetting/{key}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "key",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [],
+    "EndpointName": "beesuite/odata/AppSetting/{key}"
+  },
+  {
+    "ContainingType": "Pupa.Configs.CustomDataController\u00601[[Pupa.BusinessObjects.Beesuite.AppSetting, Pupa, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+    "Method": "Patch",
+    "RelativePath": "beesuite/odata/AppSetting/{key}",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "key",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "patch",
+        "Type": "Microsoft.AspNetCore.OData.Deltas.Delta\u00601[[Pupa.BusinessObjects.Beesuite.AppSetting, Pupa, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [],
+    "EndpointName": "beesuite/odata/AppSetting/{key}"
+  },
+  {
+    "ContainingType": "Pupa.Configs.CustomDataController\u00601[[Pupa.BusinessObjects.Beesuite.AppSetting, Pupa, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+    "Method": "Put",
+    "RelativePath": "beesuite/odata/AppSetting/{key}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "key",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "update",
+        "Type": "Pupa.BusinessObjects.Beesuite.AppSetting",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [],
+    "EndpointName": "beesuite/odata/AppSetting/{key}"
+  },
+  {
+    "ContainingType": "Pupa.Configs.CustomDataController\u00601[[Pupa.BusinessObjects.Beesuite.AppSetting, Pupa, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+    "Method": "Delete",
+    "RelativePath": "beesuite/odata/AppSetting/{key}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "key",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [],
+    "EndpointName": "beesuite/odata/AppSetting/{key}"
+  },
+  {
+    "ContainingType": "Pupa.Configs.CustomDataController\u00601[[Pupa.BusinessObjects.Beesuite.AppSetting, Pupa, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+    "Method": "Get",
+    "RelativePath": "beesuite/odata/AppSetting/$count",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [],
+    "EndpointName": "beesuite/odata/AppSetting/$count"
+  },
+  {
     "ContainingType": "Pupa.Configs.CustomDataController\u00601[[Pupa.BusinessObjects.Beesuite.Attachment, Pupa, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
     "Method": "Get",
     "RelativePath": "beesuite/odata/Attachment",

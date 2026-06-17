@@ -81,6 +81,7 @@ namespace Pupa.BusinessObjects
         public DbSet<ErrorLog> ErrorLog { get; set; }
         public DbSet<AccessLog> AccessLog { get; set; }
         public DbSet<AppConfig> AppConfig { get; set; }
+        public DbSet<AppSetting> AppSetting { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
