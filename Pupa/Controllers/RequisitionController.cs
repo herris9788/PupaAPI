@@ -105,7 +105,13 @@ namespace Pupa.Controllers
         }
 
         [HttpGet("FreonLastRequest")]
-        public async Task<IActionResult> GetFreonLastRequest([FromQuery] int vesselID, [FromQuery] int itemID, [FromQuery] string placementArea, [FromQuery] decimal qtyRequest = 1)
+        public async Task<IActionResult> GetFreonLastRequest(
+            [FromQuery] int vesselID,
+            [FromQuery] int itemID,
+            [FromQuery] string placementArea,
+            [FromQuery] decimal qtyRequest = 1,
+            [FromQuery] bool includeVoid = false,
+            [FromQuery] bool includePending = false)
         {
             if (vesselID <= 0)
                 return BadRequest("VesselID is required.");
@@ -127,7 +133,7 @@ namespace Pupa.Controllers
 
             var now = DateTime.Now;
             var area = placementArea.Trim();
-            var lastRequestDate = await GetLastFreonRequestDateAsync(vesselID, itemID, area);
+            var lastRequestDate = await GetLastFreonRequestDateAsync(vesselID, itemID, area, includeVoid, includePending);
             var intervalDays = GetIntervalDays(lastRequestDate, now);
             var damageReportRequired = IsFreonDamageReportRequired(qtyRequest, intervalDays);
 
@@ -224,17 +230,36 @@ namespace Pupa.Controllers
             return null;
         }
 
-        private async Task<DateTime?> GetLastFreonRequestDateAsync(int vesselId, int itemId, string placementArea)
+        private async Task<DateTime?> GetLastFreonRequestDateAsync(
+            int vesselId,
+            int itemId,
+            string placementArea,
+            bool includeVoid = false,
+            bool includePending = false)
         {
             var normalizedArea = placementArea.Trim().ToLower();
 
-            return await _db.RequisitionDetail
+            var query = _db.RequisitionDetail
                 .AsNoTracking()
                 .Where(x => x.ItemID == itemId &&
                             x.PlacementArea != null &&
                             x.PlacementArea.ToLower() == normalizedArea &&
                             x.Requisition != null &&
-                            x.Requisition.VesselID == vesselId)
+                            x.Requisition.VesselID == vesselId);
+
+            if (!includeVoid)
+            {
+                query = query.Where(x => x.Requisition!.Status == null ||
+                                         x.Requisition.Status.ToUpper() != "VOID");
+            }
+
+            if (!includePending)
+            {
+                query = query.Where(x => x.Requisition!.Status == null ||
+                                         x.Requisition.Status.ToUpper() != "PENDING");
+            }
+
+            return await query
                 .OrderByDescending(x => x.Requisition!.CreatedAt ?? x.Requisition.Date)
                 .Select(x => x.Requisition!.CreatedAt ?? x.Requisition.Date)
                 .FirstOrDefaultAsync();
