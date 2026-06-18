@@ -38,7 +38,10 @@ namespace Pupa.Controllers
         // POST /api/v3/release/desktop-release
         // Optional JSON body: { "currentVersion": "1.2.3", "platform": "windows" }
         // currentVersion may also be supplied via query string as a fallback.
+        // Dipilih untuk request JSON (cek update). Upload file ditangani
+        // DesktopPublish di route yang sama, dibedakan via Content-Type.
         [HttpPost("desktop-release")]
+        [Consumes("application/json")]
         public async Task<ActionResult<AppUpdateInfoDto>> DesktopRelease(
             [FromBody] DesktopReleaseRequest? request = null,
             [FromQuery] string? currentVersion = null)
@@ -112,7 +115,10 @@ namespace Pupa.Controllers
             });
         }
 
-        // POST /api/v3/release/desktop-publish   (multipart/form-data)
+        // Upload build baru (multipart/form-data). Dilayani DI ROUTE YANG SAMA
+        // dengan cek update (desktop-release) supaya cukup satu route di API
+        // gateway — request dibedakan oleh Content-Type (multipart vs json).
+        // Tetap tersedia juga di /desktop-publish bila gateway memetakannya.
         // Fields (matches tool/release_windows.ps1):
         //   file        : the build .zip
         //   version     : new version, e.g. 1.2.0
@@ -121,7 +127,9 @@ namespace Pupa.Controllers
         //   title, message, minVersion : optional overrides stored in AppConfig
         // Stores the zip under wwwroot/<Release:PublicPath> (default "releases")
         // and upserts the AppConfig row so desktop-release returns the new updateUrl.
+        [HttpPost("desktop-release")]
         [HttpPost("desktop-publish")]
+        [Consumes("multipart/form-data")]
         [RequestSizeLimit(2_147_483_648)]      // 2 GB
         [RequestFormLimits(MultipartBodyLengthLimit = 2_147_483_648)]
         public async Task<IActionResult> DesktopPublish(
