@@ -4110,25 +4110,25 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\waki.abdurrazak\\.nuget\\packages\\": {},
+    "C:\\Users\\Suhen\\.nuget\\packages\\": {},
     "C:\\Program Files\\DevExpress 25.2\\Components\\Offline Packages": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\Projects\\PupaAPI\\Pupa\\Pupa.csproj",
+      "projectUniqueName": "C:\\Users\\Suhen\\Documents\\Odata\\Pupa\\Pupa\\Pupa.csproj",
       "projectName": "Pupa",
-      "projectPath": "D:\\Projects\\PupaAPI\\Pupa\\Pupa.csproj",
-      "packagesPath": "C:\\Users\\waki.abdurrazak\\.nuget\\packages\\",
-      "outputPath": "D:\\Projects\\PupaAPI\\Pupa\\obj\\",
+      "projectPath": "C:\\Users\\Suhen\\Documents\\Odata\\Pupa\\Pupa\\Pupa.csproj",
+      "packagesPath": "C:\\Users\\Suhen\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Suhen\\Documents\\Odata\\Pupa\\Pupa\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files\\DevExpress 25.2\\Components\\Offline Packages",
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\waki.abdurrazak\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\Suhen\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\DevExpress 25.2.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
@@ -4158,7 +4158,7 @@
         "auditLevel": "low",
         "auditMode": "all"
       },
-      "SdkAnalysisLevel": "10.0.200"
+      "SdkAnalysisLevel": "10.0.100"
     },
     "frameworks": {
       "net10.0": {
@@ -4246,7 +4246,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.201/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.102/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.AspNetCore": "(,10.0.32767]",
           "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",

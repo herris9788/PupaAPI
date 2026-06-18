@@ -587,3 +587,4 @@ D:\Projects\PupaAPI\Pupa\obj\Release\net10.0\refint\Pupa.dll
 D:\Projects\PupaAPI\Pupa\obj\Release\net10.0\Pupa.pdb
 D:\Projects\PupaAPI\Pupa\obj\Release\net10.0\Pupa.genruntimeconfig.cache
 D:\Projects\PupaAPI\Pupa\obj\Release\net10.0\ref\Pupa.dll
+C:\Users\Suhen\Documents\Odata\Pupa\Pupa\obj\Release\net10.0\Pupa.sourcelink.json
