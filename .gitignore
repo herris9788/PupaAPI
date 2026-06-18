@@ -1,4 +1,4 @@
-/.vs
-/.cr
-/Pupa/obj
-/Pupa/bin/Debug
+.vs/
+.cr/
+**/obj/
+**/bin/Debug/
