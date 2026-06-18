@@ -15,7 +15,7 @@ namespace Pupa.Controllers
     /// </summary>
     [ApiController]
     [Authorize]
-    [Route("api/v3/release")]
+    [Route("beesuite/api/[controller]")]
     public class ReleaseController : ControllerBase
     {
         private const string ReleaseNamespace = "release";
