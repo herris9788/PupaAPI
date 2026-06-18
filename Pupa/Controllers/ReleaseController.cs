@@ -119,8 +119,8 @@ namespace Pupa.Controllers
         //   platform    : "windows" (optional, default windows)
         //   forceUpdate : "true"/"false" (optional)
         //   title, message, minVersion : optional overrides stored in AppConfig
-        // Stores the zip on this host (served at /Public/Releases/...) and upserts
-        // the AppConfig row so desktop-release returns the new updateUrl.
+        // Stores the zip under wwwroot/<Release:PublicPath> (default "releases")
+        // and upserts the AppConfig row so desktop-release returns the new updateUrl.
         [HttpPost("desktop-publish")]
         [RequestSizeLimit(2_147_483_648)]      // 2 GB
         [RequestFormLimits(MultipartBodyLengthLimit = 2_147_483_648)]
@@ -147,10 +147,23 @@ namespace Pupa.Controllers
             var safeVersion = string.Concat(version.Trim().Where(ch => char.IsLetterOrDigit(ch) || ch is '.' or '-' or '_'));
             var fileName = $"beesuite-{platform}-{safeVersion}.zip";
 
+            // URL path segment tempat file disajikan. HARUS sama dengan subfolder
+            // fisik di bawah wwwroot, dan harus diroute lewat API gateway ke host
+            // ini (tanpa auth) supaya app bisa mengunduhnya. Override via config
+            // "Release:PublicPath" bila perlu (default: "releases").
+            var publicPath = _config["Release:PublicPath"];
+            if (string.IsNullOrWhiteSpace(publicPath)) publicPath = "releases";
+            publicPath = publicPath.Trim('/');
+
+            // Folder fisik penyimpanan. Default: wwwroot/<publicPath> supaya cocok
+            // dengan URL publik di bawah (UseStaticFiles menyajikan wwwroot).
             var storageRoot = _config["Release:StoragePath"];
             if (string.IsNullOrWhiteSpace(storageRoot))
             {
-                storageRoot = Path.Combine(_env.ContentRootPath, "wwwroot", "releases");
+                var webRoot = string.IsNullOrWhiteSpace(_env.WebRootPath)
+                    ? Path.Combine(_env.ContentRootPath, "wwwroot")
+                    : _env.WebRootPath;
+                storageRoot = Path.Combine(webRoot, publicPath);
             }
             Directory.CreateDirectory(storageRoot);
 
@@ -160,13 +173,17 @@ namespace Pupa.Controllers
                 await file.CopyToAsync(fs);
             }
 
-            // Public base URL: configurable, otherwise derived from the request.
+            // Public base URL: utamakan config (di belakang gateway, Request.Host
+            // bisa jadi host internal yang salah). Set "Release:PublicBaseUrl"
+            // = https://api2.waruna.id.
             var baseUrl = _config["Release:PublicBaseUrl"];
             if (string.IsNullOrWhiteSpace(baseUrl))
             {
                 baseUrl = $"{Request.Scheme}://{Request.Host}";
             }
-            var updateUrl = $"{baseUrl.TrimEnd('/')}/Public/Releases/{Uri.EscapeDataString(fileName)}";
+            // updateUrl HARUS bisa di-GET tanpa token (app mengunduh tanpa auth)
+            // dan path-nya cocok dengan lokasi file di atas.
+            var updateUrl = $"{baseUrl.TrimEnd('/')}/{publicPath}/{Uri.EscapeDataString(fileName)}";
 
             var stored = new StoredRelease
             {
