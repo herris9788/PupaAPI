@@ -179,6 +179,20 @@ namespace Pupa
             app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
             app.UseRequestLocalization();
 
+            // Serve published desktop release files (uploaded via /release/desktop-publish)
+            // at /Public/Releases/<file>. Served in all environments.
+            var releasesPath = Configuration["Release:StoragePath"];
+            if (string.IsNullOrWhiteSpace(releasesPath))
+            {
+                releasesPath = Path.Combine(env.ContentRootPath, "wwwroot", "releases");
+            }
+            Directory.CreateDirectory(releasesPath);
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                FileProvider = new PhysicalFileProvider(releasesPath),
+                RequestPath = "/Public/Releases"
+            });
+
             if (!env.IsDevelopment())
             {
                 app.UseStaticFiles(new StaticFileOptions

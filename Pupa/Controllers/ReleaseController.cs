@@ -1,4 +1,5 @@
 using Pupa.BusinessObjects;
+using Pupa.BusinessObjects.Beesuite;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,8 @@ namespace Pupa.Controllers
     /// </summary>
     [ApiController]
     [Authorize]
+    // Served at both the Flutter/script contract path (/api/v3/release/...) and
+    // the project's beesuite/api convention (/beesuite/api/Release/...).
     [Route("beesuite/api/[controller]")]
     public class ReleaseController : ControllerBase
     {
@@ -22,10 +25,14 @@ namespace Pupa.Controllers
         private const string DesktopReleaseKey = "desktop-release";
 
         private readonly BeesuiteDbContext _db;
+        private readonly IConfiguration _config;
+        private readonly IWebHostEnvironment _env;
 
-        public ReleaseController(BeesuiteDbContext db)
+        public ReleaseController(BeesuiteDbContext db, IConfiguration config, IWebHostEnvironment env)
         {
             _db = db;
+            _config = config;
+            _env = env;
         }
 
         // POST /api/v3/release/desktop-release
@@ -102,6 +109,113 @@ namespace Pupa.Controllers
                     ? "A new version of BeeSuite is available. Please update the application."
                     : release.Message!,
                 UpdateUrl = release.UpdateUrl ?? string.Empty
+            });
+        }
+
+        // POST /api/v3/release/desktop-publish   (multipart/form-data)
+        // Fields (matches tool/release_windows.ps1):
+        //   file        : the build .zip
+        //   version     : new version, e.g. 1.2.0
+        //   platform    : "windows" (optional, default windows)
+        //   forceUpdate : "true"/"false" (optional)
+        //   title, message, minVersion : optional overrides stored in AppConfig
+        // Stores the zip on this host (served at /Public/Releases/...) and upserts
+        // the AppConfig row so desktop-release returns the new updateUrl.
+        [HttpPost("desktop-publish")]
+        [RequestSizeLimit(2_147_483_648)]      // 2 GB
+        [RequestFormLimits(MultipartBodyLengthLimit = 2_147_483_648)]
+        public async Task<IActionResult> DesktopPublish(
+            IFormFile file,
+            [FromForm] string? version,
+            [FromForm] string? platform = "windows",
+            [FromForm] bool forceUpdate = false,
+            [FromForm] string? title = null,
+            [FromForm] string? message = null,
+            [FromForm] string? minVersion = null)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new { ok = false, message = "No file uploaded." });
+            }
+            if (string.IsNullOrWhiteSpace(version))
+            {
+                return BadRequest(new { ok = false, message = "version is required." });
+            }
+            platform = string.IsNullOrWhiteSpace(platform) ? "windows" : platform.Trim();
+
+            // Deterministic, path-safe file name.
+            var safeVersion = string.Concat(version.Trim().Where(ch => char.IsLetterOrDigit(ch) || ch is '.' or '-' or '_'));
+            var fileName = $"beesuite-{platform}-{safeVersion}.zip";
+
+            var storageRoot = _config["Release:StoragePath"];
+            if (string.IsNullOrWhiteSpace(storageRoot))
+            {
+                storageRoot = Path.Combine(_env.ContentRootPath, "wwwroot", "releases");
+            }
+            Directory.CreateDirectory(storageRoot);
+
+            var fullPath = Path.Combine(storageRoot, fileName);
+            await using (var fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                await file.CopyToAsync(fs);
+            }
+
+            // Public base URL: configurable, otherwise derived from the request.
+            var baseUrl = _config["Release:PublicBaseUrl"];
+            if (string.IsNullOrWhiteSpace(baseUrl))
+            {
+                baseUrl = $"{Request.Scheme}://{Request.Host}";
+            }
+            var updateUrl = $"{baseUrl.TrimEnd('/')}/Public/Releases/{Uri.EscapeDataString(fileName)}";
+
+            var stored = new StoredRelease
+            {
+                LatestVersion = version.Trim(),
+                MinVersion = string.IsNullOrWhiteSpace(minVersion) ? null : minVersion.Trim(),
+                ForceUpdate = forceUpdate,
+                Title = string.IsNullOrWhiteSpace(title) ? null : title,
+                Message = string.IsNullOrWhiteSpace(message) ? null : message,
+                UpdateUrl = updateUrl
+            };
+            var json = JsonSerializer.Serialize(stored, JsonOpts);
+
+            var cfg = await _db.AppConfig
+                .FirstOrDefaultAsync(c => c.Namespace == ReleaseNamespace && c.Key == DesktopReleaseKey);
+            var now = DateTimeOffset.UtcNow;
+            if (cfg == null)
+            {
+                cfg = new AppConfig
+                {
+                    Namespace = ReleaseNamespace,
+                    Key = DesktopReleaseKey,
+                    DataType = "json",
+                    ValJson = json,
+                    Description = "Desktop release info (managed by desktop-publish).",
+                    IsSecret = false,
+                    IsReadonly = false,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                    CreatedBy = User?.Identity?.Name
+                };
+                _db.AppConfig.Add(cfg);
+            }
+            else
+            {
+                cfg.DataType = "json";
+                cfg.ValJson = json;
+                cfg.UpdatedAt = now;
+            }
+            await _db.SaveChangesAsync();
+
+            return Ok(new
+            {
+                ok = true,
+                version = version.Trim(),
+                platform,
+                forceUpdate,
+                updateUrl,
+                fileName,
+                sizeBytes = file.Length
             });
         }
 
