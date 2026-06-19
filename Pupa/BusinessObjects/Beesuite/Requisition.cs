@@ -17,6 +17,7 @@ namespace Pupa.BusinessObjects.Beesuite
         private string? _approvedByPurchasing;
         private bool? _approved;
         private string? _status;
+        private string? _revertStatus;
         private string? _requisitionNumber;
         private int? _categoryID;
 
@@ -275,6 +276,18 @@ namespace Pupa.BusinessObjects.Beesuite
                 if (_status == value) return;
                 OnPropertyChanging();
                 _status = value;
+                OnPropertyChanged();
+            }
+        }
+        [StringLength(20)]
+        public virtual string? RevertStatus
+        {
+            get => _revertStatus;
+            set
+            {
+                if (_revertStatus == value) return;
+                OnPropertyChanging();
+                _revertStatus = value;
                 OnPropertyChanged();
             }
         }

@@ -85,34 +85,11 @@ namespace Pupa.Configs
             }
             try
             {
-                var originalRequisitionStatus = entity is Requisition originalRequisition
-                    ? NormalizeRequisitionStatus(originalRequisition.Status)
-                    : string.Empty;
-
                 patch.Patch(entity);
 
-                if (entity is Requisition requisition)
+                if (entity is Requisition requisition && requisition.RevertStatus != null)
                 {
-                    var currentStatus = NormalizeRequisitionStatus(requisition.Status);
-
-                    if (currentStatus == "REJECTED")
-                    {
-                        if (string.IsNullOrWhiteSpace(requisition.RejectedBy))
-                        {
-                            return BadRequest("RejectedBy is required when Status is REJECTED.");
-                        }
-
-                        if (requisition.RejectedTime == null)
-                        {
-                            return BadRequest("RejectedTime is required when Status is REJECTED.");
-                        }
-                    }
-
-                    if (originalRequisitionStatus == "REJECTED" && currentStatus == "PENDING")
-                    {
-                        requisition.RejectedBy = null;
-                        requisition.RejectedTime = null;
-                    }
+                    requisition.RevertStatus = null;
                 }
 
                 await _db.SaveChangesAsync();
@@ -146,11 +123,6 @@ namespace Pupa.Configs
             {
                 return BadRequest(e.Message);
             }
-        }
-
-        private static string NormalizeRequisitionStatus(string? status)
-        {
-            return string.IsNullOrWhiteSpace(status) ? string.Empty : status.Trim().ToUpperInvariant();
         }
 
         // DELETE /{EntitySet}(key)
