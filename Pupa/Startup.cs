@@ -180,7 +180,9 @@ namespace Pupa
             app.UseRequestLocalization();
 
             // Serve published desktop release files (uploaded via /release/desktop-publish)
-            // at /Public/Releases/<file>. Served in all environments.
+            // at /releases/<file>. HARUS cocok dengan updateUrl yang dibuat
+            // ReleaseController (publicPath "releases") dan route Ocelot /releases/*.
+            // Served in all environments, sebelum auth (publik, tanpa token).
             var releasesPath = Configuration["Release:StoragePath"];
             if (string.IsNullOrWhiteSpace(releasesPath))
             {
@@ -190,7 +192,7 @@ namespace Pupa
             app.UseStaticFiles(new StaticFileOptions
             {
                 FileProvider = new PhysicalFileProvider(releasesPath),
-                RequestPath = "/Public/Releases"
+                RequestPath = "/releases"
             });
 
             if (!env.IsDevelopment())
