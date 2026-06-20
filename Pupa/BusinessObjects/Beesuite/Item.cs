@@ -218,6 +218,7 @@ namespace Pupa.BusinessObjects.Beesuite
         private int? _AMTID;
         private int? _TTPID;
         private int? _WSIID;
+        private bool? _RequiredOfflineSync;
 
         private string? _UOMCode;
         private decimal? _UOMDecimals;
@@ -513,6 +514,7 @@ namespace Pupa.BusinessObjects.Beesuite
         public virtual UOM? UOM3 { get; set; }
         [ForeignKey("UOMID4")]
         public virtual UOM? UOM4 { get; set; }
+        public virtual bool? RequiredOfflineSync { get { return _RequiredOfflineSync; } set { OnPropertyChanging(); _RequiredOfflineSync = value; OnPropertyChanged(); } }
 
         public virtual ObservableCollection<ROB>? ROBs { get; set; }
         private string? _Alias { get; set; }
