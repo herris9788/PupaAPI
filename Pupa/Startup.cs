@@ -4,6 +4,7 @@ using Pupa.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.OData;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.AspNetCore.OData.Query.Validator;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -189,10 +190,20 @@ namespace Pupa
                 releasesPath = Path.Combine(env.ContentRootPath, "wwwroot", "releases");
             }
             Directory.CreateDirectory(releasesPath);
+            // .msix/.msixbundle BUKAN MIME type bawaan ASP.NET Core, jadi
+            // UseStaticFiles default akan 404-kan file .msix. Daftarkan content
+            // type-nya supaya paket update bisa diunduh client (.zip sudah
+            // didukung default, tetap dipastikan di sini).
+            var releaseContentTypes = new FileExtensionContentTypeProvider();
+            releaseContentTypes.Mappings[".msix"] = "application/msix";
+            releaseContentTypes.Mappings[".msixbundle"] = "application/msixbundle";
+            releaseContentTypes.Mappings[".appinstaller"] = "application/appinstaller";
+            releaseContentTypes.Mappings[".zip"] = "application/zip";
             app.UseStaticFiles(new StaticFileOptions
             {
                 FileProvider = new PhysicalFileProvider(releasesPath),
-                RequestPath = "/releases"
+                RequestPath = "/releases",
+                ContentTypeProvider = releaseContentTypes
             });
 
             if (!env.IsDevelopment())
