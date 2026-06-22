@@ -10,7 +10,7 @@ namespace Pupa.Configs
     public class CustomGenericControllerFeatureProvider : IApplicationFeatureProvider<ControllerFeature>
     {
         public static readonly Type[] EntityTypes = new Type[] {
-            // Item is handled by ItemODataController (supports vesselId paint filter)
+            typeof(Item),
             typeof(UOM),
             typeof(ItemCategory),
             typeof(Specification),

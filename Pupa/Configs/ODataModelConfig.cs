@@ -55,11 +55,6 @@ namespace Pupa.Configs
                 builder.AddEntitySet(entityType.Name, et);
             }
 
-            // Item is served by ItemODataController, not the generic controller,
-            // but still needs to be registered in the EDM model for OData routing.
-            var itemEntity = builder.AddEntityType(typeof(Item));
-            builder.AddEntitySet(nameof(Item), itemEntity);
-
             // InventoryUserGroup is served by its own controller but still needs
             // to be exposed as an entity set in the EDM model.
             var iug = builder.AddEntityType(typeof(InventoryUserGroup));
