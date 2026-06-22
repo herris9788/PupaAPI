@@ -1,15 +1,21 @@
-using Pupa.BusinessObjects.Beesuite;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OData.Query;
 using Microsoft.AspNetCore.OData.Routing.Controllers;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using System.Data;
 using Pupa.BusinessObjects;
+using Pupa.BusinessObjects.Beesuite;
+using Pupa.Configs;
 
 namespace Pupa.Controllers
 {
-    [Route("beesuite/api/[controller]")]
-    public class ItemController : Controller
+    /// <summary>
+    /// Dedicated OData controller for the Item entity set.
+    /// Overrides the generic <see cref="CustomDataController{Item}"/> so we can
+    /// intercept the optional <c>vesselId</c> query parameter and pre-filter
+    /// paint items (T06.001 prefix) to only those allowed for the vessel's paint group.
+    /// Non-paint items are never filtered out.
+    /// </summary>
+    public class ItemController : ODataController
     {
         private readonly BeesuiteDbContext _db;
 
@@ -18,48 +24,67 @@ namespace Pupa.Controllers
             _db = db;
         }
 
-        public class EquivalentItemDto
+        // GET /beesuite/odata/Item
+        // Optional query params:
+        //   vesselId=<int>        — required to enable paint filter
+        //   paintFilter=true      — must be present alongside vesselId to activate the filter
+        [EnableQuery(MaxNodeCount = 500, MaxExpansionDepth = 500)]
+        public async Task<IActionResult> Get()
         {
-            public virtual string ItemCode { get; set; }
-            public virtual string Brand { get; set; }
-            public virtual string Description { get; set; }
-            public virtual string GroupName { get; set; }
-            public virtual string Category { get; set; }
+            IQueryable<Item> query = _db.Set<Item>();
+
+            var paintFilterRequested = Request.Query.TryGetValue("paintFilter", out var pfVal)
+                && pfVal.ToString().Equals("true", StringComparison.OrdinalIgnoreCase);
+
+            if (paintFilterRequested &&
+                Request.Query.TryGetValue("vesselId", out var vesselIdStr) &&
+                int.TryParse(vesselIdStr, out int vesselId))
+            {
+                var allowedCodes = await ResolvePaintAllowedCodesAsync(vesselId);
+                if (allowedCodes != null)
+                    query = ApplyPaintFilter(query, allowedCodes);
+            }
+
+            return Ok(query);
         }
 
-        [HttpGet("Equivalent")]
-        public async Task<IActionResult> GetEquivalent([FromQuery] string itemCode)
+        // GET /beesuite/odata/Item(key)
+        [EnableQuery(MaxNodeCount = 500, MaxExpansionDepth = 500)]
+        public IActionResult Get(int key)
         {
-            try
-            {
-                var conn = _db.Database.GetDbConnection();
-                if (conn.State != ConnectionState.Open)
-                    await conn.OpenAsync();
-                using var cmd = conn.CreateCommand();
-                cmd.CommandText = @"SELECT * FROM ""GetEquivalents""(@ItemCode)";
-                var param = cmd.CreateParameter();
-                param.ParameterName = "@ItemCode";
-                param.Value = itemCode;
-                cmd.Parameters.Add(param);
-                using var reader = await cmd.ExecuteReaderAsync();
-                var result = new List<EquivalentItemDto>();
-                while (await reader.ReadAsync())
-                {
-                    result.Add(new EquivalentItemDto
-                    {
-                        ItemCode = reader["ItemCode"]?.ToString(),
-                        Brand = reader["Brand"]?.ToString(),
-                        Description = reader["Description"]?.ToString(),
-                        GroupName = reader["GroupName"]?.ToString(),
-                        Category = reader["Category"]?.ToString(),
-                    });
-                }
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+            var entity = _db.Set<Item>().Find(key);
+            if (entity == null) return NotFound();
+            return Ok(entity);
+        }
+
+        // ── helpers ──────────────────────────────────────────────────────────
+
+        private async Task<IReadOnlyList<string>?> ResolvePaintAllowedCodesAsync(int vesselId)
+        {
+            var vessel = await _db.Set<InventoryUser>()
+                .Where(u => u.ID == vesselId)
+                .Select(u => new { u.InventoryUserName, u.GroupID, u.DB })
+                .FirstOrDefaultAsync();
+
+            if (vessel == null) return null;
+
+            var groupCode = await _db.Set<InventoryUserGroup>()
+                .Where(g => g.GroupID == vessel.GroupID && g.DB == vessel.DB)
+                .Select(g => g.GroupCode)
+                .FirstOrDefaultAsync();
+
+            var groupKey = PaintPolicy.ResolveGroup(vessel.InventoryUserName ?? "", groupCode);
+            return PaintPolicy.AllowedCodes(groupKey);
+        }
+
+        private static IQueryable<Item> ApplyPaintFilter(IQueryable<Item> query, IReadOnlyList<string> allowedCodes)
+        {
+            var prefix = PaintPolicy.PaintItemCodePrefix;
+            var codeList = allowedCodes.ToList();
+            return query.Where(i =>
+                i.ItemCode == null ||
+                !i.ItemCode.StartsWith(prefix) ||
+                codeList.Contains(i.ItemCode));
         }
     }
 }
