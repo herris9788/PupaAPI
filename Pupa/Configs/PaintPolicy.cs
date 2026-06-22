@@ -6,7 +6,7 @@ namespace Pupa.Configs
     /// </summary>
     public static class PaintPolicy
     {
-        public const string PaintItemCodePrefix = "T06.001";
+        public const string PaintItemCodePrefix = "T06";
 
         private static readonly HashSet<string> _alkydGroupCodes =
             new(StringComparer.OrdinalIgnoreCase) { "TK1", "TK2", "TK3", "TK5", "TK6", "ST", "CC", "BC" };
