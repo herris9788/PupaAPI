@@ -1,0 +1,13 @@
+services:
+  pupa-api:
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    container_name: pupa-api-watch
+    working_dir: /src/Pupa
+    volumes:
+      - .:/src
+    ports:
+      - "3011:3011"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - DOTNET_USE_POLLING_FILE_WATCHER=true
+    command: dotnet watch run --no-hot-reload
