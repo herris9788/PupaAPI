@@ -7,7 +7,7 @@ namespace Pupa.BusinessObjects.Beesuite
     [Table("JobDetail", Schema = "public")]
     public class JobDetail : BaseEntity
     {
-        private long _jobId;
+        private int _jobId;
         private string? _category;
         private string? _conductBy;
         private string? _jobType;
@@ -25,7 +25,7 @@ namespace Pupa.BusinessObjects.Beesuite
         [Key]
         [Column("JobID")]
         [DatabaseGenerated(DatabaseGeneratedOption.None)] // PK sekaligus FK, tidak auto-generate
-        public virtual long JobID
+        public virtual int JobID
         {
             get => _jobId;
             set { if (_jobId == value) return; OnPropertyChanging(); _jobId = value; OnPropertyChanged(); }

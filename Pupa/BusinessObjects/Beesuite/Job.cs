@@ -8,11 +8,11 @@ namespace Pupa.BusinessObjects.Beesuite
     [Table("Job")]
     public class Job : BaseEntity
     {
-        private long _id;
-        private long _jobRequestId;
+        private int _id;
+        private int _jobRequestId;
         private string? _serviceOrderNo;
         private string? _externalId;
-        private long? _equipmentId;
+        private int? _equipmentId;
         private int _sequenceNo = 1;
         private string _status = "Pending";
         private string _formType = "JobRequestItem";
@@ -28,7 +28,6 @@ namespace Pupa.BusinessObjects.Beesuite
         private DateTime? _rejectedAt;
         private string? _approvalRemarks;
         private string? _itemCode;
-        private string? _additionalData;
         private int _approvalMaxLevel = 1;
 
         private string? _approvedBy1;
@@ -48,12 +47,13 @@ namespace Pupa.BusinessObjects.Beesuite
         public Job()
         {
             JobDetails = new ObservableCollection<JobDetail>();
+            Attachments = new ObservableCollection<JobAttachment>();
         }
 
         [Key]
         [Column("ID")]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public virtual long ID
+        public virtual int ID
         {
             get => _id;
             set { if (_id == value) return; OnPropertyChanging(); _id = value; OnPropertyChanged(); }
@@ -61,7 +61,7 @@ namespace Pupa.BusinessObjects.Beesuite
 
         [Required]
         [Column("JobRequestID")]
-        public virtual long JobRequestId
+        public virtual int JobRequestId
         {
             get => _jobRequestId;
             set { if (_jobRequestId == value) return; OnPropertyChanging(); _jobRequestId = value; OnPropertyChanged(); }
@@ -84,7 +84,7 @@ namespace Pupa.BusinessObjects.Beesuite
         }
 
         [Column("EquipmentID")]
-        public virtual long? EquipmentID
+        public virtual int? EquipmentID
         {
             get => _equipmentId;
             set { if (_equipmentId == value) return; OnPropertyChanging(); _equipmentId = value; OnPropertyChanged(); }
@@ -206,12 +206,6 @@ namespace Pupa.BusinessObjects.Beesuite
             set { if (_itemCode == value) return; OnPropertyChanging(); _itemCode = value; OnPropertyChanged(); }
         }
 
-        [Column("AdditionalData", TypeName = "jsonb")]
-        public virtual string? AdditionalData
-        {
-            get => _additionalData;
-            set { if (_additionalData == value) return; OnPropertyChanging(); _additionalData = value; OnPropertyChanged(); }
-        }
 
         [Required]
         [Range(1, 7)]
@@ -251,5 +245,15 @@ namespace Pupa.BusinessObjects.Beesuite
         //[ForeignKey("EquipmentId")]
         //public virtual Equipment? Equipment { get; set; }
         public virtual ObservableCollection<JobDetail> JobDetails { get; set; }
+
+        private string? _entityTypeName = "Job";
+
+        public virtual string? EntityTypeName
+        {
+            get => _entityTypeName;
+            private set { _entityTypeName = value; }
+        }
+        public virtual ObservableCollection<JobFieldValue>? JobFieldValues { get; set; }
+        public virtual ObservableCollection<JobAttachment>? Attachments { get; set; }
     }
 }

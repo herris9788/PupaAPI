@@ -63,7 +63,9 @@ namespace Pupa.Configs
             typeof(ErrorLog),
             typeof(AccessLog),
             typeof(WhatsappDeviceGroup),
-            typeof(AppConfig)
+            typeof(AppConfig),
+            typeof(JobAttachment),
+            typeof(JobRequestAttachment)
         };
         public static readonly Type[] EntityTypesExternal = new Type[] {
           //typeof(SH_01), typeof(SH_02)

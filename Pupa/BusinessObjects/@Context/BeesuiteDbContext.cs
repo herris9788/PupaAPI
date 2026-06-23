@@ -81,6 +81,8 @@ namespace Pupa.BusinessObjects
         public DbSet<ErrorLog> ErrorLog { get; set; }
         public DbSet<AccessLog> AccessLog { get; set; }
         public DbSet<AppConfig> AppConfig { get; set; }
+        public DbSet<JobRequestAttachment> JobRequestAttachment { get; set; }
+        public DbSet<JobAttachment> JobAttachment { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -237,6 +239,20 @@ namespace Pupa.BusinessObjects
             modelBuilder.Entity<TemplatePermission>()
                 .HasIndex(e => new { e.TemplateName, e.MenuID, e.FeatureCode });
 
+
+            // JobRequest -> JobFieldValue
+            modelBuilder.Entity<JobRequest>()
+                .HasMany(e => e.JobFieldValues)
+                .WithOne(e => e.JobRequest)
+                .HasForeignKey(e => new { e.EntityType, e.EntityID })
+                .HasPrincipalKey(e => new { e.EntityTypeName, e.ID }); // ← principal key composite
+
+            // Job -> JobFieldValue  
+            modelBuilder.Entity<Job>()
+                .HasMany(e => e.JobFieldValues)
+                .WithOne(e => e.Job)
+                .HasForeignKey(e => new { e.EntityType, e.EntityID })
+                .HasPrincipalKey(e => new { e.EntityTypeName, e.ID });
         }
     }
 }

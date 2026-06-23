@@ -8,12 +8,12 @@ namespace Pupa.BusinessObjects.Beesuite
     [Table("JobRequest")]
     public class JobRequest : BaseEntity
     {
-        private long _id;
+        private int _id;
         private string _reportNo = string.Empty;
         private string _status = "Draft";
         private string _approvalStatus = "Pending";
         private int _approvalMaxLevel = 1;
-        private long? _vesselId;
+        private int? _vesselId;
         private string? _vesselName;
         private string? _companyName;
         private string? _portOfAttendance;
@@ -32,7 +32,6 @@ namespace Pupa.BusinessObjects.Beesuite
         private string? _rejectedBy;
         private DateTime? _rejectedAt;
         private string? _approvalRemarks;
-        private string? _additionalData;
 
         // ApprovedBy1 - ApprovedBy7
         private string? _approvedBy1;
@@ -51,18 +50,20 @@ namespace Pupa.BusinessObjects.Beesuite
         private DateTime? _approvedBy7At;
 
         // VesselInventory
-        private long? _vesselInventoryUserRowId;
+        private int? _vesselInventoryUserRowId;
         private string? _vesselInventoryUserDb;
 
         public JobRequest()
         {
             Jobs = new ObservableCollection<Job>();
+            JobFieldValues = new ObservableCollection<JobFieldValue>();
+            Attachments = new ObservableCollection<JobRequestAttachment>();
         }
 
         [Key]
         [Column("ID")]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public virtual long ID
+        public virtual int ID
         {
             get => _id;
             set { if (_id == value) return; OnPropertyChanging(); _id = value; OnPropertyChanged(); }
@@ -105,7 +106,7 @@ namespace Pupa.BusinessObjects.Beesuite
         }
 
         [Column("VesselID")]
-        public virtual long? VesselID
+        public virtual int? VesselID
         {
             get => _vesselId;
             set { if (_vesselId == value) return; OnPropertyChanging(); _vesselId = value; OnPropertyChanged(); }
@@ -246,13 +247,6 @@ namespace Pupa.BusinessObjects.Beesuite
             set { if (_approvalRemarks == value) return; OnPropertyChanging(); _approvalRemarks = value; OnPropertyChanged(); }
         }
 
-        [Column("AdditionalData", TypeName = "jsonb")]
-        public virtual string? AdditionalData
-        {
-            get => _additionalData;
-            set { if (_additionalData == value) return; OnPropertyChanging(); _additionalData = value; OnPropertyChanged(); }
-        }
-
         // ApprovedBy1 - ApprovedBy7
         [StringLength(100)][Column("ApprovedBy1")] public virtual string? ApprovedBy1 { get => _approvedBy1; set { if (_approvedBy1 == value) return; OnPropertyChanging(); _approvedBy1 = value; OnPropertyChanged(); } }
         [Column("ApprovedBy1At")] public virtual DateTime? ApprovedBy1At { get => _approvedBy1At; set { if (_approvedBy1At == value) return; OnPropertyChanging(); _approvedBy1At = value; OnPropertyChanged(); } }
@@ -276,7 +270,7 @@ namespace Pupa.BusinessObjects.Beesuite
         [Column("ApprovedBy7At")] public virtual DateTime? ApprovedBy7At { get => _approvedBy7At; set { if (_approvedBy7At == value) return; OnPropertyChanging(); _approvedBy7At = value; OnPropertyChanged(); } }
 
         [Column("VesselInventoryUserRowID")]
-        public virtual long? VesselInventoryUserRowID
+        public virtual int? VesselInventoryUserRowID
         {
             get => _vesselInventoryUserRowId;
             set { if (_vesselInventoryUserRowId == value) return; OnPropertyChanging(); _vesselInventoryUserRowId = value; OnPropertyChanged(); }
@@ -290,5 +284,15 @@ namespace Pupa.BusinessObjects.Beesuite
         }
 
         public virtual ObservableCollection<Job> Jobs { get; set; }
+        public virtual ObservableCollection<JobFieldValue>? JobFieldValues { get; set; }
+        public virtual ObservableCollection<JobRequestAttachment>? Attachments { get; set; }
+
+
+        private string? _entityTypeName = "JobRequest";
+        public virtual string? EntityTypeName
+        {
+            get => _entityTypeName;
+            private set { _entityTypeName = value; }
+        }
     }
 }
