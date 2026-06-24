@@ -22,6 +22,9 @@ namespace Pupa.BusinessObjects.Beesuite
         private DateTime? _refreshTokenExpiryUtc;
         private string? _position { get; set; }
 
+        private string? _TwoFactorSecret { get; set; }
+        private bool? _TwoFactorEnabled { get; set; } = false;
+
         [Key]
         public virtual int ID
         {
@@ -265,6 +268,41 @@ namespace Pupa.BusinessObjects.Beesuite
                 if (_CanManageRepair == value) return;
                 OnPropertyChanging();
                 _CanManageRepair = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public virtual string? TwoFactorSecret
+        {
+            get => _TwoFactorSecret;
+            set
+            {
+                if (_TwoFactorSecret == value) return;
+                OnPropertyChanging();
+                _TwoFactorSecret = value;
+                OnPropertyChanged();
+            }
+        }
+        public virtual bool? TwoFactorEnabled
+        {
+            get => _TwoFactorEnabled;
+            set
+            {
+                if (_TwoFactorEnabled == value) return;
+                OnPropertyChanging();
+                _TwoFactorEnabled = value;
+                OnPropertyChanged();
+            }
+        }
+        private bool? _TwoFactorConfirmed { get; set; }
+        public virtual bool? TwoFactorConfirmed
+        {
+            get => _TwoFactorConfirmed;
+            set
+            {
+                if (_TwoFactorConfirmed == value) return;
+                OnPropertyChanging();
+                _TwoFactorConfirmed = value;
                 OnPropertyChanged();
             }
         }
