@@ -54,6 +54,7 @@ namespace Pupa.Configs
             typeof(LaunchPointTemplate),
             typeof(UserPermission),
             typeof(OrgDelegation),
+            typeof(UserApprovalDelegation),
             typeof(OrgLevel),
             typeof(OrgPosition),
             typeof(OrgDepartment),
@@ -65,7 +66,8 @@ namespace Pupa.Configs
             typeof(WhatsappDeviceGroup),
             typeof(AppConfig),
             typeof(JobAttachment),
-            typeof(JobRequestAttachment)
+            typeof(JobRequestAttachment),
+            typeof(UserApprovalDelegation)
         };
         public static readonly Type[] EntityTypesExternal = new Type[] {
           //typeof(SH_01), typeof(SH_02)

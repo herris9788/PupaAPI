@@ -72,6 +72,7 @@ namespace Pupa.BusinessObjects
         public DbSet<LaunchPointTemplate> LaunchPointTemplate { get; set; }
         public DbSet<UserPermission> UserPermission { get; set; }
         public DbSet<OrgDelegation> OrgDelegation { get; set; }
+        public DbSet<UserApprovalDelegation> UserApprovalDelegation { get; set; }
         public DbSet<OrgLevel> OrgLevel { get; set; }
         public DbSet<OrgPosition> OrgPosition { get; set; }
         public DbSet<OrgDepartment> OrgDepartment { get; set; }

@@ -207,6 +207,61 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+
+        // Delegation audit: when an approval is performed by a delegate on behalf of
+        // the original approver, ApprovedByN keeps the ORIGINAL approver, while
+        // ApprovedByNActualBy records the delegate who actually performed it.
+        // Null = the original approver acted themselves (no delegation).
+        private string? _approvedBy1ActualBy { get; set; }
+        [StringLength(500)]
+        public virtual string? ApprovedBy1ActualBy
+        {
+            get => _approvedBy1ActualBy;
+            set { if (_approvedBy1ActualBy == value) return; OnPropertyChanging(); _approvedBy1ActualBy = value; OnPropertyChanged(); }
+        }
+        private string? _approvedBy2ActualBy { get; set; }
+        [StringLength(500)]
+        public virtual string? ApprovedBy2ActualBy
+        {
+            get => _approvedBy2ActualBy;
+            set { if (_approvedBy2ActualBy == value) return; OnPropertyChanging(); _approvedBy2ActualBy = value; OnPropertyChanged(); }
+        }
+        private string? _approvedBy3ActualBy { get; set; }
+        [StringLength(500)]
+        public virtual string? ApprovedBy3ActualBy
+        {
+            get => _approvedBy3ActualBy;
+            set { if (_approvedBy3ActualBy == value) return; OnPropertyChanging(); _approvedBy3ActualBy = value; OnPropertyChanged(); }
+        }
+        private string? _approvedBy4ActualBy { get; set; }
+        [StringLength(500)]
+        public virtual string? ApprovedBy4ActualBy
+        {
+            get => _approvedBy4ActualBy;
+            set { if (_approvedBy4ActualBy == value) return; OnPropertyChanging(); _approvedBy4ActualBy = value; OnPropertyChanged(); }
+        }
+        private string? _approvedBy5ActualBy { get; set; }
+        [StringLength(500)]
+        public virtual string? ApprovedBy5ActualBy
+        {
+            get => _approvedBy5ActualBy;
+            set { if (_approvedBy5ActualBy == value) return; OnPropertyChanging(); _approvedBy5ActualBy = value; OnPropertyChanged(); }
+        }
+        private string? _approvedBy6ActualBy { get; set; }
+        [StringLength(500)]
+        public virtual string? ApprovedBy6ActualBy
+        {
+            get => _approvedBy6ActualBy;
+            set { if (_approvedBy6ActualBy == value) return; OnPropertyChanging(); _approvedBy6ActualBy = value; OnPropertyChanged(); }
+        }
+        private string? _approvedBy7ActualBy { get; set; }
+        [StringLength(500)]
+        public virtual string? ApprovedBy7ActualBy
+        {
+            get => _approvedBy7ActualBy;
+            set { if (_approvedBy7ActualBy == value) return; OnPropertyChanging(); _approvedBy7ActualBy = value; OnPropertyChanged(); }
+        }
+
         private bool? _Received { get; set; }
         public virtual bool? Received
         {
