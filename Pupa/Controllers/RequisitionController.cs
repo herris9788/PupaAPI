@@ -161,9 +161,14 @@ namespace Pupa.Controllers
             if (itemIds.Count == 0)
                 return null;
 
+            var _itemCodes = new List<string>()
+            {
+                "T05.002.0008","T05.002.0011","T05.002.00116","T05.002.00118","T05.002.00121","T05.002.00123","T05.002.00126","T05.002.00127","T05.002.00128","T05.002.00129","T05.002.0013","T05.002.00132","T05.002.00149","T05.002.00193","T05.002.0024","T05.002.0025","T05.002.0035"
+            };
+
             var freonItemIds = await _db.Item
                 .AsNoTracking()
-                .Where(x => itemIds.Contains(x.ItemID) && x.ItemCode != null && x.ItemCode.StartsWith(FreonItemCodePrefix))
+                .Where(x => itemIds.Contains(x.ItemID) && x.ItemCode != null && _itemCodes.Contains(x.ItemCode))
                 .Select(x => x.ItemID)
                 .ToListAsync();
 
