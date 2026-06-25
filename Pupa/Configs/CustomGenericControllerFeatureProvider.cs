@@ -68,6 +68,8 @@ namespace Pupa.Configs
             typeof(JobAttachment),
             typeof(JobRequestAttachment),
             typeof(UserApprovalDelegation),
+            typeof(Usage),
+            typeof(UsageDetail),
             typeof(Item)
         };
         public static readonly Type[] EntityTypesExternal = new Type[] {
