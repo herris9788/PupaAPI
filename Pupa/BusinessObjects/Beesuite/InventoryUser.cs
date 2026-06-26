@@ -253,6 +253,14 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _AutoRequester;
             set { OnPropertyChanging(); _AutoRequester = value; OnPropertyChanged(); }
         }
+        private string? _Flag { get; set; }
+        [Column("Flag")]
+        public virtual string? Flag
+        {
+            get => _Flag;
+            set { OnPropertyChanging(); _Flag = value; OnPropertyChanged(); }
+        }
+
         #endregion
         public virtual ObservableCollection<UserVesselRel> UserVesselRels { get; set; }
         public virtual ObservableCollection<Requisition> Requisitions { get; set; }
