@@ -27,6 +27,8 @@ namespace Pupa.BusinessObjects.Beesuite
         private string? _VesselName;
         private DateTime? _UsageDate = DateTime.Now;
         private string? _UsedBy;
+        private string? _ConsumedBy;
+        private string? _COA;
         private string? _Purpose;
         private string? _Remarks;
         private string? _Status = "Pending Approval";
@@ -92,9 +94,17 @@ namespace Pupa.BusinessObjects.Beesuite
         [Column("UsageDate")]
         public virtual DateTime? UsageDate { get { return _UsageDate; } set { OnPropertyChanging(); _UsageDate = value; OnPropertyChanged(); } }
 
-        /// <summary>Person / crew who used the items.</summary>
+        /// <summary>Who the items were used by (defaults to the assigned vessel's user).</summary>
         [Column("UsedBy")]
         public virtual string? UsedBy { get { return _UsedBy; } set { OnPropertyChanging(); _UsedBy = value; OnPropertyChanged(); } }
+
+        /// <summary>The person/crew who actually consumed the items (mandatory).</summary>
+        [Column("ConsumedBy")]
+        public virtual string? ConsumedBy { get { return _ConsumedBy; } set { OnPropertyChanging(); _ConsumedBy = value; OnPropertyChanged(); } }
+
+        /// <summary>Chart of Accounts (StockFamilyCOA.PurposeEx) charged for this usage.</summary>
+        [Column("COA")]
+        public virtual string? COA { get { return _COA; } set { OnPropertyChanging(); _COA = value; OnPropertyChanged(); } }
 
         /// <summary>Why the items were used (job, maintenance, etc.).</summary>
         [Column("Purpose")]
