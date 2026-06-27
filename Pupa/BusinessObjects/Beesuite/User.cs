@@ -161,6 +161,7 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+        public virtual ObservableCollection<UserVesselRel>? UserVesselRels { get; set; }
         private bool? _IsActive { get; set; }
         public virtual bool? IsActive
         {
@@ -304,5 +305,6 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+        public virtual ObservableCollection<UserApprovalScope>? UserApprovalScopes { get; set; }
     }
 }
