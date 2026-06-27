@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Pupa.BusinessObjects;
 using Pupa.BusinessObjects.Beesuite;
+using Pupa.ViewModels;
 using System.Data;
 
 
@@ -18,9 +19,17 @@ namespace Pupa.Controllers
             this.db = db;
         }
         [HttpGet("Approver")]
-        public async Task<IActionResult> CheckApprover()
+        public async Task<IActionResult> CheckApprover([FromQuery] FindApproverDTO Query)
         {
-            var Requisition = await db.Requisition.AsNoTracking().FirstOrDefaultAsync(x => x.ID == 2281);
+            Requisition Requisition = null;
+            if (Query.RequisitionNumber != null)
+            {
+                Requisition = await db.Requisition.FirstOrDefaultAsync(x => x.RequisitionNumber == Query.RequisitionNumber);
+            }
+            else if (Query.RequisitionID != null) {
+                Requisition = await db.Requisition.FirstOrDefaultAsync(x => x.ID == Query.RequisitionID);
+            }
+
             if (Requisition == null) return Ok(Array.Empty<object>());
 
             var Family = db.StockFamily.FirstOrDefault(x => x.FamilyID == Requisition.CategoryID);
