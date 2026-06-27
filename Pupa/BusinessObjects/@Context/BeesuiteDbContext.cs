@@ -17,7 +17,6 @@ namespace Pupa.BusinessObjects
             var conn = configuration.GetConnectionString("Beesuite");
             var optionsBuilder = new DbContextOptionsBuilder<BeesuiteDbContext>();
             optionsBuilder.UseNpgsql(conn);
-            optionsBuilder.UseLazyLoadingProxies();
             return new BeesuiteDbContext(optionsBuilder.Options);
         }
     }
@@ -98,7 +97,6 @@ namespace Pupa.BusinessObjects
                 .Build();
                 var conn = configuration.GetConnectionString("Beesuite");
                 optionsBuilder.UseNpgsql(conn);
-                optionsBuilder.UseLazyLoadingProxies();
             }
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)

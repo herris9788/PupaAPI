@@ -11,15 +11,18 @@ namespace Pupa.BusinessObjects.Beesuite
         }
 
         #region Backing Fields
-        private int _UserID;
-        private string _CompanyDB = string.Empty;
-        private int _VesselGroupID;
+        private int? _UserID;
+        private string? _CompanyDB;
+        private int? _VesselGroupID;
         private int? _StockCategoryID;
         private int? _StockFamilyID;
-        private short _Level = 1;
+        private short? _Level;
         private string? _Department;
         private string? _SubDepartment;
-
+        private int? _InventoryUserID;
+        private DateTime? _CreatedAt;
+        private DateTime? _UpdatedAt;
+        private int _ID;
         #endregion
 
         #region Public Properties
@@ -27,12 +30,12 @@ namespace Pupa.BusinessObjects.Beesuite
         [Column("ID")]
         public virtual int ID
         {
-            get;
-            set;
+            get => _ID;
+            set { OnPropertyChanging(); _ID = value; OnPropertyChanged(); }
         }
 
         [Column("UserID")]
-        public virtual int UserID
+        public virtual int? UserID
         {
             get => _UserID;
             set { OnPropertyChanging(); _UserID = value; OnPropertyChanged(); }
@@ -40,14 +43,14 @@ namespace Pupa.BusinessObjects.Beesuite
 
         [Column("CompanyDB")]
         [MaxLength(20)]
-        public virtual string CompanyDB
+        public virtual string? CompanyDB
         {
             get => _CompanyDB;
             set { OnPropertyChanging(); _CompanyDB = value; OnPropertyChanged(); }
         }
 
         [Column("VesselGroupID")]
-        public virtual int VesselGroupID
+        public virtual int? VesselGroupID
         {
             get => _VesselGroupID;
             set { OnPropertyChanging(); _VesselGroupID = value; OnPropertyChanged(); }
@@ -67,27 +70,43 @@ namespace Pupa.BusinessObjects.Beesuite
             set { OnPropertyChanging(); _StockFamilyID = value; OnPropertyChanged(); }
         }
 
-        /// <summary>Approval level in chain: 1 = first approver … 6 = sixth approver.</summary>
+        /// <summary>Approval level in chain: 1 = first approver … 6 = sixth approver. Null = no level assigned.</summary>
         [Column("Level")]
         [Range(1, 6)]
-        public virtual short Level
+        public virtual short? Level
         {
             get => _Level;
             set { OnPropertyChanging(); _Level = value; OnPropertyChanged(); }
         }
 
         [Column("CreatedAt")]
-        public virtual DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public virtual DateTime? CreatedAt
+        {
+            get => _CreatedAt;
+            set { OnPropertyChanging(); _CreatedAt = value; OnPropertyChanged(); }
+        }
 
         [Column("UpdatedAt")]
-        public virtual DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public virtual DateTime? UpdatedAt
+        {
+            get => _UpdatedAt;
+            set { OnPropertyChanging(); _UpdatedAt = value; OnPropertyChanged(); }
+        }
+
+        [Column("Department")]
+        [MaxLength(10)]
+        public virtual string? Department
+        {
+            get => _Department;
+            set { OnPropertyChanging(); _Department = value; OnPropertyChanged(); }
+        }
+
         [Column("SubDepartment")]
         public virtual string? SubDepartment
         {
             get => _SubDepartment;
             set { OnPropertyChanging(); _SubDepartment = value; OnPropertyChanged(); }
         }
-
         #endregion
 
         #region Navigation Properties
@@ -103,20 +122,12 @@ namespace Pupa.BusinessObjects.Beesuite
         [ForeignKey("StockFamilyID")]
         public virtual StockFamily? StockFamily { get; set; }
 
-        /// <summary>Optional vessel department filter: "Deck", "Engine", or null = all departments.</summary>
-        [Column("Department")]
-        [MaxLength(10)]
-        public virtual string? Department
-        {
-            get => _Department;
-            set { OnPropertyChanging(); _Department = value; OnPropertyChanged(); }
-        }
-        private int? _InventoryUserID;
         public virtual int? InventoryUserID
         {
-            get { return _InventoryUserID; }
+            get => _InventoryUserID;
             set { OnPropertyChanging(); _InventoryUserID = value; OnPropertyChanged(); }
         }
+
         [ForeignKey("InventoryUserID")]
         public virtual InventoryUser? InventoryUser { get; set; }
         #endregion

@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -13,8 +12,8 @@ namespace Pupa.BusinessObjects.Beesuite
         {
         }
         private int _id;
-        private string _username = string.Empty;
-        private string _secret = string.Empty;
+        private string? _username = string.Empty;
+        private string? _secret = string.Empty;
         private string? _encoding = "base32";
         private string? _role;
         private string? _description;
@@ -32,7 +31,7 @@ namespace Pupa.BusinessObjects.Beesuite
             set { OnPropertyChanging(); _id = value; OnPropertyChanged(); }
         }
 
-        public virtual string Username
+        public virtual string? Username
         {
             get => _username;
             set
@@ -44,7 +43,7 @@ namespace Pupa.BusinessObjects.Beesuite
             }
         }
 
-        public virtual string Secret
+        public virtual string? Secret
         {
             get => _secret;
             set
@@ -162,7 +161,6 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
-        public virtual ObservableCollection<UserVesselRel>? UserVesselRels { get; set; }
         private bool? _IsActive { get; set; }
         public virtual bool? IsActive
         {
@@ -306,6 +304,5 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
-        public virtual ObservableCollection<UserApprovalScope>? UserApprovalScopes { get; set; }
     }
 }

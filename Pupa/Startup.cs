@@ -1,4 +1,4 @@
-using Pupa.Configs;
+﻿using Pupa.Configs;
 using Pupa.BusinessObjects;
 using Pupa.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -27,32 +27,38 @@ namespace Pupa
 
         public IConfiguration Configuration { get; }
 
-        // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
             AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
             AppContext.SetSwitch("Npgsql.DisableDateTimeInfinityConversions", true);
-            services.AddLocalization();
 
+            services.AddLocalization();
             services.AddHttpContextAccessor();
             services.AddScoped<BeesuiteConnectionResolver>();
+
             services.AddDbContext<BeesuiteDbContext>((sp, options) =>
             {
                 var conn = sp.GetRequiredService<BeesuiteConnectionResolver>().ConnectionString;
                 options.UseNpgsql(conn);
-                options.UseLazyLoadingProxies();
+                // No lazy-loading proxies: navigation properties are only populated when
+                // explicitly Include()d. This keeps "return Ok(entity)" safe — un-loaded
+                // navigations serialize as null instead of triggering lazy loads
+                // mid-serialization (which caused circular graphs + DbContext errors).
             });
 
-            // Map each generic CustomDataController<TEntity> to its entity-set route
-            // (must be an application-model provider so it runs before OData routing).
             services.TryAddEnumerable(
                 ServiceDescriptor.Transient<Microsoft.AspNetCore.Mvc.ApplicationModels.IApplicationModelProvider, GenericControllerNameProvider>());
 
+            // ✅ Satu AddJsonOptions saja, semua setting digabung di sini
             services.AddControllers()
                 .AddJsonOptions(options =>
                 {
                     options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
                     options.JsonSerializerOptions.WriteIndented = true;
+                    options.JsonSerializerOptions.MaxDepth = 100;
+                    options.JsonSerializerOptions.PropertyNamingPolicy = null;
+                    options.JsonSerializerOptions.IncludeFields = true;
+                    options.JsonSerializerOptions.DictionaryKeyPolicy = null;
                 })
                 .ConfigureApplicationPartManager(partManager =>
                 {
@@ -70,12 +76,16 @@ namespace Pupa
                             odataServices.AddSingleton<ODataQueryValidator, OdataValidator>();
                         })
                         .EnableQueryFeatures(100);
-                }).AddJsonOptions(options =>
-                {
-                    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-                    options.JsonSerializerOptions.WriteIndented = true;
-                    options.JsonSerializerOptions.MaxDepth = 100;
                 });
+
+            // ✅ Hanya untuk minimal API / HttpContext.Response.WriteAsJsonAsync
+            services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =>
+            {
+                options.SerializerOptions.IncludeFields = true;
+                options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+                options.SerializerOptions.PropertyNamingPolicy = null;
+                options.SerializerOptions.MaxDepth = 100;
+            });
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
             {
@@ -93,6 +103,7 @@ namespace Pupa
                     ClockSkew = TimeSpan.Zero
                 };
             });
+
             services.AddSwaggerGen(c =>
             {
                 c.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
@@ -122,25 +133,21 @@ namespace Pupa
                     Description = "Pupa API."
                 });
             });
-            services.Configure<Microsoft.AspNetCore.Mvc.JsonOptions>(o =>
-            {
-                o.JsonSerializerOptions.PropertyNamingPolicy = null;
-                o.JsonSerializerOptions.IncludeFields = true;
-                o.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-                o.JsonSerializerOptions.DictionaryKeyPolicy = null;
-            });
-            services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =>
-            {
-                options.SerializerOptions.IncludeFields = true;
-            });
+
             services.AddCors(x => x.AddPolicy("AllowSpecificOrigin", policyBuilder =>
             {
-                policyBuilder.AllowAnyHeader().AllowAnyMethod().SetIsOriginAllowed((host) => true)
-            .AllowCredentials();
+                policyBuilder
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .SetIsOriginAllowed((host) => true)
+                    .AllowCredentials();
             }));
+
             services.AddSignalR().AddJsonProtocol(options =>
             {
                 options.PayloadSerializerOptions.PropertyNamingPolicy = null;
+                options.PayloadSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+                options.PayloadSerializerOptions.MaxDepth = 100;
             });
 
             services.AddScoped<IFtpService, FtpService>();
@@ -151,21 +158,24 @@ namespace Pupa
             });
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IConfiguration configuration)
         {
-            var supportedCultures = new[]{
+            var supportedCultures = new[]
+            {
                 new CultureInfo("id-ID")
             };
+
             app.UseRequestLocalization(new RequestLocalizationOptions
             {
                 DefaultRequestCulture = new RequestCulture("id-ID"),
                 SupportedCultures = supportedCultures,
                 FallBackToParentCultures = false
             });
+
             CultureInfo.DefaultThreadCurrentCulture = CultureInfo.CreateSpecificCulture("id-ID");
 
             app.UseDeveloperExceptionPage();
+
             app.UseSwagger();
             app.UseSwaggerUI(c =>
             {
@@ -180,25 +190,19 @@ namespace Pupa
             app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
             app.UseRequestLocalization();
 
-            // Serve published desktop release files (uploaded via /release/desktop-publish)
-            // at /releases/<file>. HARUS cocok dengan updateUrl yang dibuat
-            // ReleaseController (publicPath "releases") dan route Ocelot /releases/*.
-            // Served in all environments, sebelum auth (publik, tanpa token).
             var releasesPath = Configuration["Release:StoragePath"];
             if (string.IsNullOrWhiteSpace(releasesPath))
             {
                 releasesPath = Path.Combine(env.ContentRootPath, "wwwroot", "releases");
             }
             Directory.CreateDirectory(releasesPath);
-            // .msix/.msixbundle BUKAN MIME type bawaan ASP.NET Core, jadi
-            // UseStaticFiles default akan 404-kan file .msix. Daftarkan content
-            // type-nya supaya paket update bisa diunduh client (.zip sudah
-            // didukung default, tetap dipastikan di sini).
+
             var releaseContentTypes = new FileExtensionContentTypeProvider();
             releaseContentTypes.Mappings[".msix"] = "application/msix";
             releaseContentTypes.Mappings[".msixbundle"] = "application/msixbundle";
             releaseContentTypes.Mappings[".appinstaller"] = "application/appinstaller";
             releaseContentTypes.Mappings[".zip"] = "application/zip";
+
             app.UseStaticFiles(new StaticFileOptions
             {
                 FileProvider = new PhysicalFileProvider(releasesPath),
@@ -211,20 +215,19 @@ namespace Pupa
                 app.UseStaticFiles(new StaticFileOptions
                 {
                     FileProvider = new PhysicalFileProvider(
-                    Path.Combine(Pupa.Configuration.OverseaAttachmentPath)),
+                        Path.Combine(Pupa.Configuration.OverseaAttachmentPath)),
                     RequestPath = "/Oversea/Files"
                 });
                 app.UseStaticFiles(new StaticFileOptions
                 {
                     FileProvider = new PhysicalFileProvider(
-                    Path.Combine(Pupa.Configuration.OverseaAttachmentPath)),
+                        Path.Combine(Pupa.Configuration.OverseaAttachmentPath)),
                     RequestPath = "/Public/Files"
                 });
                 app.UseStaticFiles(new StaticFileOptions
                 {
                     FileProvider = new PhysicalFileProvider(
-                        Path.Combine("/home/ict/uploads")
-                    ),
+                        Path.Combine("/home/ict/uploads")),
                     RequestPath = "/Public/HazardObservation"
                 });
             }

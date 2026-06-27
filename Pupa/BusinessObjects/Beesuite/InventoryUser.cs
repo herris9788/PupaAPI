@@ -262,8 +262,8 @@ namespace Pupa.BusinessObjects.Beesuite
         }
 
         #endregion
-        public virtual ObservableCollection<UserVesselRel> UserVesselRels { get; set; }
-        public virtual ObservableCollection<Requisition> Requisitions { get; set; }
+        public virtual ObservableCollection<UserVesselRel>? UserVesselRels { get; set; }
+        public virtual ObservableCollection<Requisition>? Requisitions { get; set; }
 
         public virtual InventoryUserGroup? Group { get; set; }
         public virtual ObservableCollection<InventoryUserSpec>? InventoryUserSpecs { get;set;  }
