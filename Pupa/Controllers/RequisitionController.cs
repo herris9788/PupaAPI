@@ -13,6 +13,9 @@ using Microsoft.EntityFrameworkCore;
 using Pupa.BusinessObjects.Beesuite;
 using Pupa.BusinessObjects;
 using System.Collections.ObjectModel;
+using System.Net;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 
 namespace Pupa.Controllers
@@ -26,12 +29,17 @@ namespace Pupa.Controllers
         private const string FreonProvisionSystem = "Provision Refrigeration System";
         private const string FreonDamageReportType = "FreonDamageReport";
         private const int FreonStandardCycleDays = 90;
+        private const string InvoiceReceiptType = "InvoiceReceipt";
 
         private readonly IConfiguration _configuration;
         private readonly BeesuiteDbContext _db;
-        public RequisitionController(BeesuiteDbContext db)
+        private readonly IHttpClientFactory _httpClientFactory;
+
+        public RequisitionController(BeesuiteDbContext db, IConfiguration configuration, IHttpClientFactory httpClientFactory)
         {
             _db = db;
+            _configuration = configuration;
+            _httpClientFactory = httpClientFactory;
         }
 
 
@@ -145,6 +153,69 @@ namespace Pupa.Controllers
                 FreonSystem = InferFreonSystem(area),
                 FreonEvaluationScenario = GetFreonEvaluationScenario(qtyRequest, intervalDays)
             });
+        }
+
+        [HttpPost("{id:int}/VerifyNota")]
+        public async Task<IActionResult> VerifyNota(
+            int id,
+            [FromQuery] bool force,
+            CancellationToken cancellationToken)
+        {
+            var webhookUrl = _configuration["NotaVerification:WebhookUrl"];
+            if (string.IsNullOrWhiteSpace(webhookUrl))
+                return StatusCode(500, new { Message = "Nota verification webhook URL is not configured." });
+
+            var requisitionExists = await _db.Requisition
+                .AsNoTracking()
+                .AnyAsync(x => x.ID == id, cancellationToken);
+
+            if (!requisitionExists)
+                return NotFound($"Requisition with ID {id} not found.");
+
+            var invoiceRel = await _db.RequisitionAttachmentRel
+                .Include(x => x.Attachment)
+                .Where(x => x.RequisitionID == id &&
+                            x.Type != null &&
+                            x.Type.ToLower() == InvoiceReceiptType.ToLower() &&
+                            x.AttachmentID.HasValue)
+                .OrderByDescending(x => x.ID)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (invoiceRel?.Attachment == null)
+                return NotFound($"Invoice receipt attachment for requisition {id} not found.");
+
+            var existing = await _db.RequisitionNotaVerification
+                .FirstOrDefaultAsync(x =>
+                    x.RequisitionID == id &&
+                    x.AttachmentID == invoiceRel.AttachmentID, cancellationToken);
+
+            if (existing != null && existing.ScanStatus == "SUCCESS" && !force)
+                return Ok(existing);
+
+            var row = existing ?? new RequisitionNotaVerification
+            {
+                RequisitionID = id,
+                RequisitionAttachmentRelID = invoiceRel.ID,
+                AttachmentID = invoiceRel.AttachmentID
+            };
+
+            row.RequisitionAttachmentRelID = invoiceRel.ID;
+            row.AttachmentID = invoiceRel.AttachmentID;
+            row.FileName = invoiceRel.Attachment.FileName;
+            row.ScanStatus = "PROCESSING";
+            row.ErrorMessage = null;
+            row.LastAttemptAt = DateTime.UtcNow;
+            row.NextRetryAt = null;
+
+            if (existing == null)
+                _db.RequisitionNotaVerification.Add(row);
+
+            await _db.SaveChangesAsync(cancellationToken);
+
+            await RunNotaVerificationAsync(row, invoiceRel.Attachment, webhookUrl, cancellationToken);
+            await _db.SaveChangesAsync(cancellationToken);
+
+            return Ok(row);
         }
 
         private async Task<IActionResult?> ApplyFreonEvaluationAsync(Requisition requisition, DateTime now)
@@ -344,6 +415,133 @@ namespace Pupa.Controllers
             return detail.RequisitionDetailAttachmentRels?.Any(x =>
                 string.Equals(x.Type, FreonDamageReportType, StringComparison.OrdinalIgnoreCase) &&
                 (x.AttachmentID.HasValue || x.Attachment != null)) == true;
+        }
+
+        private async Task RunNotaVerificationAsync(
+            RequisitionNotaVerification row,
+            Attachment attachment,
+            string webhookUrl,
+            CancellationToken cancellationToken)
+        {
+            byte[] fileBytes;
+            try
+            {
+                fileBytes = DecodeAttachmentBase64(attachment);
+            }
+            catch (Exception ex)
+            {
+                MarkNotaVerificationFailed(row, $"Attachment content is invalid: {ex.Message}");
+                return;
+            }
+
+            const int maxAttempts = 3;
+            string? lastError = null;
+
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                row.RetryCount += 1;
+                row.LastAttemptAt = DateTime.UtcNow;
+
+                try
+                {
+                    using var request = new MultipartFormDataContent();
+                    using var fileContent = new ByteArrayContent(fileBytes);
+                    request.Add(fileContent, "file", attachment.FileName ?? $"nota-{attachment.ID}.jpg");
+
+                    var client = _httpClientFactory.CreateClient();
+                    using var response = await client.PostAsync(webhookUrl, request, cancellationToken);
+                    var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var result = JsonSerializer.Deserialize<NotaVerificationWebhookResponse>(
+                            body,
+                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                        if (result == null)
+                        {
+                            MarkNotaVerificationFailed(row, "Nota verification webhook returned an empty response.");
+                            return;
+                        }
+
+                        row.ScanStatus = "SUCCESS";
+                        row.VerificationStatus = result.Status;
+                        row.InvoiceDate = result.InvoiceDate;
+                        row.VendorName = result.VendorName;
+                        row.AgeInDays = result.AgeInDays;
+                        row.OverdueDays = result.OverdueDays;
+                        row.RawResponse = body;
+                        row.ErrorMessage = null;
+                        row.NextRetryAt = null;
+                        row.UpdatedAt = DateTime.UtcNow;
+                        return;
+                    }
+
+                    lastError = $"Nota verification webhook failed with HTTP {(int)response.StatusCode}: {body}";
+                    if (!IsTransientStatusCode(response.StatusCode) || attempt == maxAttempts)
+                        break;
+                }
+                catch (Exception ex) when (attempt < maxAttempts)
+                {
+                    lastError = ex.Message;
+                }
+
+                await Task.Delay(TimeSpan.FromSeconds(attempt * 2), cancellationToken);
+            }
+
+            MarkNotaVerificationFailed(row, lastError ?? "Nota verification webhook failed.");
+        }
+
+        private static byte[] DecodeAttachmentBase64(Attachment attachment)
+        {
+            if (string.IsNullOrWhiteSpace(attachment.Base64))
+                throw new InvalidOperationException("Attachment Base64 is empty.");
+
+            var base64 = attachment.Base64.Trim();
+            var commaIndex = base64.IndexOf(',');
+            if (commaIndex >= 0)
+                base64 = base64[(commaIndex + 1)..];
+
+            return Convert.FromBase64String(base64);
+        }
+
+        private static bool IsTransientStatusCode(HttpStatusCode statusCode)
+        {
+            return statusCode == HttpStatusCode.RequestTimeout ||
+                   statusCode == (HttpStatusCode)429 ||
+                   (int)statusCode >= 500;
+        }
+
+        private static void MarkNotaVerificationFailed(RequisitionNotaVerification row, string errorMessage)
+        {
+            row.ScanStatus = "FAILED";
+            row.VerificationStatus = null;
+            row.InvoiceDate = null;
+            row.VendorName = null;
+            row.AgeInDays = null;
+            row.OverdueDays = null;
+            row.RawResponse = null;
+            row.ErrorMessage = errorMessage;
+            row.NextRetryAt = null;
+            row.UpdatedAt = DateTime.UtcNow;
+        }
+
+        private sealed class NotaVerificationWebhookResponse
+        {
+            [JsonPropertyName("status")]
+            public string? Status { get; set; }
+
+            [JsonPropertyName("tanggal_nota")]
+            public DateTime? InvoiceDate { get; set; }
+
+            [JsonPropertyName("nama_vendor")]
+            public string? VendorName { get; set; }
+
+            [JsonPropertyName("usia_hari")]
+            public int? AgeInDays { get; set; }
+
+            [JsonPropertyName("hari_terlambat")]
+            public int? OverdueDays { get; set; }
         }
 
     }

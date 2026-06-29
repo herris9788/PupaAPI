@@ -34,6 +34,7 @@ namespace Pupa
 
             services.AddLocalization();
             services.AddHttpContextAccessor();
+            services.AddHttpClient();
             services.AddScoped<BeesuiteConnectionResolver>();
 
             services.AddDbContext<BeesuiteDbContext>((sp, options) =>

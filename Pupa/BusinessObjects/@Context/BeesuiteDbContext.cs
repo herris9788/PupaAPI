@@ -37,6 +37,8 @@ namespace Pupa.BusinessObjects
         public DbSet<UserVesselRel> UserVesselRel { get; set; }
         public DbSet<Requisition> Requisition { get; set; }
         public DbSet<Attachment> Attachment { get; set; }
+        public DbSet<RequisitionAttachmentRel> RequisitionAttachmentRel { get; set; }
+        public DbSet<RequisitionNotaVerification> RequisitionNotaVerification { get; set; }
 
         public DbSet<RequisitionDetail> RequisitionDetail { get; set; }
         public DbSet<VesselSpecRel> VesselSpecRel { get; set; }

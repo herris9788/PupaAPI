@@ -27,6 +27,7 @@ namespace Pupa.Configs
             typeof(Approval),
             typeof(Attachment),
             typeof(RequisitionAttachmentRel),
+            typeof(RequisitionNotaVerification),
             typeof(Event),
             typeof(EventHamperItem),
             typeof(EventParticipant),
