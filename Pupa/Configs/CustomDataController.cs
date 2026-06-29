@@ -3,8 +3,10 @@ using Pupa.BusinessObjects.Beesuite;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OData.Deltas;
 using Microsoft.AspNetCore.OData.Query;
+using Microsoft.AspNetCore.OData.Results;
 using Microsoft.AspNetCore.OData.Routing.Controllers;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace Pupa.Configs
 {
@@ -41,15 +43,34 @@ namespace Pupa.Configs
         }
 
         // GET /{EntitySet}(key)
+        // Returns an IQueryable filtered to the key (via SingleResult) — NOT a
+        // materialized Find() — so [EnableQuery] can apply $select/$expand against
+        // the database. Returning a single materialized entity would ignore $expand
+        // (navigations would come back empty since lazy loading is disabled).
         [EnableQuery(MaxNodeCount = 500, MaxExpansionDepth = 500)]
-        public IActionResult Get(int key)
+        public SingleResult<TEntity> Get(int key)
         {
-            var entity = _db.Set<TEntity>().Find(key);
-            if (entity == null)
+            return SingleResult.Create(FilterByKey(key));
+        }
+
+        // Builds "e => e.<PrimaryKey> == key" using the entity's actual primary-key
+        // property name (Item -> ItemID, Requisition -> ID, etc.).
+        private IQueryable<TEntity> FilterByKey(int key)
+        {
+            var keyProperty = _db.Model.FindEntityType(typeof(TEntity))?.FindPrimaryKey()?.Properties[0];
+            var keyName = keyProperty?.Name ?? "ID";
+
+            var parameter = Expression.Parameter(typeof(TEntity), "e");
+            var property = Expression.Property(parameter, keyName);
+            Expression keyConstant = Expression.Constant(key);
+            if (property.Type != typeof(int))
             {
-                return NotFound();
+                keyConstant = Expression.Convert(keyConstant, property.Type);
             }
-            return Ok(entity);
+            var predicate = Expression.Lambda<Func<TEntity, bool>>(
+                Expression.Equal(property, keyConstant), parameter);
+
+            return _db.Set<TEntity>().Where(predicate);
         }
 
         // POST /{EntitySet}

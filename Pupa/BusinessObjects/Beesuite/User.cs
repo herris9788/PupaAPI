@@ -305,6 +305,18 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+        private bool? _Disabled { get; set; }
+        public virtual bool? Disabled
+        {
+            get => _Disabled;
+            set
+            {
+                if (_Disabled == value) return;
+                OnPropertyChanging();
+                _Disabled = value;
+                OnPropertyChanged();
+            }
+        }
         public virtual ObservableCollection<UserApprovalScope>? UserApprovalScopes { get; set; }
     }
 }
