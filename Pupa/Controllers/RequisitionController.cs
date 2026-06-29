@@ -454,21 +454,48 @@ namespace Pupa.Controllers
                 {
                     using var request = new MultipartFormDataContent();
                     using var fileContent = new ByteArrayContent(fileBytes);
+                    var contentType = ResolveAttachmentContentType(attachment);
+                    fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
                     request.Add(fileContent, "file", attachment.FileName ?? $"nota-{attachment.ID}.jpg");
 
                     var client = _httpClientFactory.CreateClient();
+                    client.DefaultRequestHeaders.Accept.Clear();
+                    client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
                     using var response = await client.PostAsync(webhookUrl, request, cancellationToken);
                     var body = await response.Content.ReadAsStringAsync(cancellationToken);
 
                     await SendTelegramNotaDebugAsync(
-                        $"ATTEMPT {attempt}/{maxAttempts} verify nota\nRequisitionID: {row.RequisitionID}\nAttachmentID: {row.AttachmentID}\nHTTP: {(int)response.StatusCode}\nResponse: {TrimTelegramText(body, 1200)}",
+                        $"ATTEMPT {attempt}/{maxAttempts} verify nota\nRequisitionID: {row.RequisitionID}\nAttachmentID: {row.AttachmentID}\nContentType: {contentType}\nHTTP: {(int)response.StatusCode}\nResponse: {TrimTelegramText(body, 1200)}",
                         cancellationToken);
 
                     if (response.IsSuccessStatusCode)
                     {
-                        var result = JsonSerializer.Deserialize<NotaVerificationWebhookResponse>(
-                            body,
-                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        if (string.IsNullOrWhiteSpace(body))
+                        {
+                            lastError = "Nota verification webhook returned HTTP 200 with empty response body.";
+                            if (attempt == maxAttempts)
+                                break;
+
+                            await Task.Delay(TimeSpan.FromSeconds(attempt * 2), cancellationToken);
+                            continue;
+                        }
+
+                        NotaVerificationWebhookResponse? result;
+                        try
+                        {
+                            result = JsonSerializer.Deserialize<NotaVerificationWebhookResponse>(
+                                body,
+                                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        }
+                        catch (JsonException ex)
+                        {
+                            lastError = $"Nota verification webhook returned invalid JSON: {ex.Message}. Body: {TrimTelegramText(body, 500)}";
+                            if (attempt == maxAttempts)
+                                break;
+
+                            await Task.Delay(TimeSpan.FromSeconds(attempt * 2), cancellationToken);
+                            continue;
+                        }
 
                         if (result == null)
                         {
@@ -481,7 +508,7 @@ namespace Pupa.Controllers
 
                         row.ScanStatus = "SUCCESS";
                         row.VerificationStatus = result.Status;
-                        row.InvoiceDate = result.InvoiceDate;
+                        row.InvoiceDate = ParseNotaDate(result.InvoiceDate);
                         row.VendorName = result.VendorName;
                         row.AgeInDays = result.AgeInDays;
                         row.OverdueDays = result.OverdueDays;
@@ -529,11 +556,37 @@ namespace Pupa.Controllers
             return Convert.FromBase64String(base64);
         }
 
+        private static string ResolveAttachmentContentType(Attachment attachment)
+        {
+            if (!string.IsNullOrWhiteSpace(attachment.MimeType))
+                return attachment.MimeType;
+
+            var extension = Path.GetExtension(attachment.FileName ?? string.Empty).ToLowerInvariant();
+            return extension switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                ".webp" => "image/webp",
+                ".pdf" => "application/pdf",
+                _ => "application/octet-stream"
+            };
+        }
+
         private static bool IsTransientStatusCode(HttpStatusCode statusCode)
         {
             return statusCode == HttpStatusCode.RequestTimeout ||
                    statusCode == (HttpStatusCode)429 ||
                    (int)statusCode >= 500;
+        }
+
+        private static DateTime? ParseNotaDate(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return null;
+
+            return DateTime.TryParse(value, out var parsed)
+                ? parsed
+                : null;
         }
 
         private static void MarkNotaVerificationFailed(RequisitionNotaVerification row, string errorMessage)
@@ -597,7 +650,7 @@ namespace Pupa.Controllers
             public string? Status { get; set; }
 
             [JsonPropertyName("tanggal_nota")]
-            public DateTime? InvoiceDate { get; set; }
+            public string? InvoiceDate { get; set; }
 
             [JsonPropertyName("nama_vendor")]
             public string? VendorName { get; set; }
