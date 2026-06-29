@@ -1,7 +1,9 @@
 using Pupa;
 using Pupa.BusinessObjects.Beesuite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace Pupa.BusinessObjects
 {
@@ -248,12 +250,67 @@ namespace Pupa.BusinessObjects
                 .HasForeignKey(e => new { e.EntityType, e.EntityID })
                 .HasPrincipalKey(e => new { e.EntityTypeName, e.ID }); // ← principal key composite
 
-            // Job -> JobFieldValue  
+            // Job -> JobFieldValue
             modelBuilder.Entity<Job>()
                 .HasMany(e => e.JobFieldValues)
                 .WithOne(e => e.Job)
                 .HasForeignKey(e => new { e.EntityType, e.EntityID })
                 .HasPrincipalKey(e => new { e.EntityTypeName, e.ID });
+        }
+
+        public override int SaveChanges(bool acceptAllChangesOnSuccess)
+        {
+            ApplyAuditTimestamps();
+            return base.SaveChanges(acceptAllChangesOnSuccess);
+        }
+
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            ApplyAuditTimestamps();
+            return base.SaveChangesAsync(cancellationToken);
+        }
+
+        // Auto-fill CreatedAt/UpdatedAt audit columns so NOT NULL constraints are
+        // satisfied without the client having to send them. Only touches entities
+        // that actually have those (non store-generated) DateTime properties, and
+        // never overwrites a value the client already provided for CreatedAt.
+        private void ApplyAuditTimestamps()
+        {
+            var now = DateTime.Now;
+            foreach (var entry in ChangeTracker.Entries())
+            {
+                if (entry.State == EntityState.Added)
+                {
+                    SetWhenNull(entry, "CreatedAt", now);
+                    SetWhenNull(entry, "UpdatedAt", now);
+                }
+                else if (entry.State == EntityState.Modified)
+                {
+                    SetAlways(entry, "UpdatedAt", now);
+                }
+            }
+        }
+
+        private static bool IsWritableDateTime(EntityEntry entry, string propertyName)
+        {
+            var property = entry.Metadata.FindProperty(propertyName);
+            return property != null
+                && property.ValueGenerated == ValueGenerated.Never
+                && (property.ClrType == typeof(DateTime) || property.ClrType == typeof(DateTime?));
+        }
+
+        private static void SetWhenNull(EntityEntry entry, string propertyName, DateTime value)
+        {
+            if (!IsWritableDateTime(entry, propertyName)) return;
+            var member = entry.Property(propertyName);
+            if (member.CurrentValue == null)
+                member.CurrentValue = value;
+        }
+
+        private static void SetAlways(EntityEntry entry, string propertyName, DateTime value)
+        {
+            if (!IsWritableDateTime(entry, propertyName)) return;
+            entry.Property(propertyName).CurrentValue = value;
         }
     }
 }
