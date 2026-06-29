@@ -318,12 +318,15 @@ namespace Pupa.Controllers
 
                 if (User == null) throw new Exception("User not found");
 
+                var IsAdminUser = User.Role == "ADMIN";
+
                 // Semua scope yang dimiliki user ini (lintas VesselGroup)
                 var MyScopes = await db.UserApprovalScope.AsNoTracking()
                     .Where(x => x.UserID == User.ID)
                     .ToListAsync();
 
-                if (!MyScopes.Any())
+                // Kalau bukan admin dan tidak punya scope sama sekali, tidak akan ada yang pending
+                if (!MyScopes.Any() && !IsAdminUser)
                 {
                     return Ok(new
                     {
@@ -333,12 +336,29 @@ namespace Pupa.Controllers
                     });
                 }
 
-                var MyVesselGroupIDs = MyScopes.Select(x => x.VesselGroupID).Distinct().ToList();
+                // Kalau admin tapi tidak punya scope sendiri, dia tetap perlu lihat semua VesselGroup
+                // (karena dia bisa punya admin-approved item di vessel group mana saja)
+                List<int> MyVesselGroupIDs;
+                if (MyScopes.Any())
+                {
+                    MyVesselGroupIDs = MyScopes.Select(x => x.VesselGroupID.Value).Distinct().ToList();
+                }
+                else
+                {
+                    MyVesselGroupIDs = await db.InventoryUserGroup.AsNoTracking().Select(x => x.ID).ToListAsync();
+                }
+
+                // Kalau admin, perluas ke semua VesselGroup juga supaya admin-approved item dari group lain ikut kelihatan
+                if (IsAdminUser)
+                {
+                    var AllVesselGroupIDs = await db.InventoryUserGroup.AsNoTracking().Select(x => x.ID).ToListAsync();
+                    MyVesselGroupIDs = MyVesselGroupIDs.Union(AllVesselGroupIDs).Distinct().ToList();
+                }
 
                 // Semua scope di VesselGroup-VesselGroup yang relevan (sekali query saja)
                 var Scopes = await db.UserApprovalScope.AsNoTracking()
                     .Include(x => x.User)
-                    .Where(x => MyVesselGroupIDs.Contains(x.VesselGroupID))
+                    .Where(x => MyVesselGroupIDs.Contains(x.VesselGroupID.Value))
                     .ToListAsync();
 
                 // Semua vessel yang ada di vessel group milik user ini
@@ -349,13 +369,23 @@ namespace Pupa.Controllers
 
                 var VesselIDs = Vessels.Select(x => x.ID).ToList();
 
-                // Semua requisition pada vessel-vessel tersebut
-                var Requisitions = await db.Requisition.Include(x=> x.InventoryUser).AsNoTracking()
-                    .Where(x => VesselIDs.Contains(x.VesselID.Value) && x.Status == "PENDING" && x.RequisitionNumber.Substring(0,2) != "SO")
+                // Semua requisition pada vessel-vessel tersebut.
+                // Dianggap "pending" kalau Status == PENDING ATAU RevertStatus == REVERTED
+                // (RevertStatus tidak mengubah data approval, cuma menandai requisition harus
+                // muncul lagi di pending list)
+                var Requisitions = await db.Requisition.Include(x => x.InventoryUser).AsNoTracking()
+                    .Where(x => VesselIDs.Contains(x.VesselID.Value)
+                        && (x.Status == "PENDING" || x.RevertStatus == "REVERTED")
+                        && x.RequisitionNumber.Substring(0, 2) != "SO")
                     .ToListAsync();
 
                 // Preload StockFamily sekali saja (hindari query berulang di dalam loop)
                 var FamilyMap = await db.StockFamily.AsNoTracking().ToListAsync();
+
+                // Preload semua User untuk lookup Role berdasarkan nama approver
+                // (dipakai untuk deteksi "ApprovedBy ini Role-nya ADMIN atau bukan")
+                var UserByUsernameLower = await db.User.AsNoTracking()
+                    .ToDictionaryAsync(x => x.Username.ToLower(), x => x);
 
                 string? GetActualApproverName(Requisition Requisition, int level)
                 {
@@ -415,6 +445,41 @@ namespace Pupa.Controllers
                     return Resolved;
                 }
 
+                object BuildItem(Requisition Requisition, InventoryUser Vessel, int Level, UserApprovalScope? ResolvedScope, bool IsAdminOverride, string? AdminApprovedBy = null)
+                {
+                    return new
+                    {
+                        Requisition.ID,
+                        Requisition.RequisitionNumber,
+                        PendingLevel = Level,
+                        Requisition.Status,
+                        Requisition.RevertStatus,
+                        IsAdminOverride,
+                        AdminApprovedBy,
+                        Requisition.Department,
+                        Requisition.SubDepartment,
+                        Vessel = new
+                        {
+                            ID = Requisition.InventoryUser.ID,
+                            DB = Requisition.InventoryUser.DB,
+                            InventoryUserID = Requisition.InventoryUser.InventoryUserID,
+                            InventoryUserCode = Requisition.InventoryUser.InventoryUserCode,
+                            InventoryUserName = Requisition.InventoryUser.InventoryUserName
+                        },
+                        VesselID = Vessel.ID,
+                        VesselGroupID = Vessel.Group.ID,
+                        MatchedScope = ResolvedScope == null ? null : new
+                        {
+                            ResolvedScope.ID,
+                            ResolvedScope.InventoryUserID,
+                            ResolvedScope.StockCategoryID,
+                            ResolvedScope.StockFamilyID,
+                            ResolvedScope.Department,
+                            ResolvedScope.SubDepartment,
+                        }
+                    };
+                }
+
                 var PendingList = new List<object>();
 
                 foreach (var Requisition in Requisitions)
@@ -422,51 +487,52 @@ namespace Pupa.Controllers
                     var Vessel = Vessels.FirstOrDefault(x => x.ID == Requisition.VesselID);
                     if (Vessel?.Group == null) continue;
 
-                    // Cari level pertama yang belum diapprove (current pending level)
-                    int? PendingLevel = null;
+                    // Cari level pertama yang BENAR-BENAR belum diapprove (kosong),
+                    // sekaligus kumpulkan level-level sebelumnya yang sudah keisi
+                    // tapi approver-nya ber-Role ADMIN.
+                    int NormalPendingLevel = Requisition.ApprovalMaxLevel.Value + 1; // default: fully approved
+                    var AdminApprovedLevels = new List<(int Level, string ApprovedByName)>();
+
                     for (int i = 1; i <= Requisition.ApprovalMaxLevel; i++)
                     {
-                        if (string.IsNullOrWhiteSpace(GetActualApproverName(Requisition, i)))
+                        var ApprovedByName = GetActualApproverName(Requisition, i);
+
+                        if (string.IsNullOrWhiteSpace(ApprovedByName))
                         {
-                            PendingLevel = i;
+                            NormalPendingLevel = i;
                             break;
+                        }
+
+                        // Level ini sudah ada approver-nya — cek apakah Role-nya ADMIN
+                        if (UserByUsernameLower.TryGetValue(ApprovedByName.ToLower(), out var ApproverUser)
+                            && ApproverUser.Role == "ADMIN")
+                        {
+                            AdminApprovedLevels.Add((i, ApprovedByName));
                         }
                     }
 
-                    if (PendingLevel == null) continue; // sudah fully approved, skip
+                    bool IsFullyApproved = NormalPendingLevel > Requisition.ApprovalMaxLevel;
 
-                    var ResolvedScope = ResolveScope(Requisition, Vessel, Vessel.Group.ID, PendingLevel.Value);
-
-                    // Hanya masukkan kalau scope yang resolve memang user ini
-                    if (ResolvedScope?.UserID == User.ID)
+                    // 1) Flow normal — semua user (termasuk admin kalau dia memang owner scope di level ini)
+                    if (!IsFullyApproved)
                     {
-                        PendingList.Add(new
+                        var ResolvedScope = ResolveScope(Requisition, Vessel, Vessel.Group.ID, NormalPendingLevel);
+
+                        if (ResolvedScope?.UserID == User.ID)
                         {
-                            Requisition.ID,
-                            Requisition.RequisitionNumber,
-                            PendingLevel,
-                            Requisition.Department,
-                            Requisition.SubDepartment,
-                            Vessel = new
-                            {
-                                ID = Requisition.InventoryUser.ID,
-                                DB = Requisition.InventoryUser.DB,
-                                InventoryUserID = Requisition.InventoryUser.InventoryUserID,
-                                InventoryUserCode = Requisition.InventoryUser.InventoryUserCode,
-                                InventoryUserName= Requisition.InventoryUser.InventoryUserName
-                            },
-                            VesselID = Vessel.ID,
-                            VesselGroupID = Vessel.Group.ID,
-                            MatchedScope = new
-                            {
-                                ResolvedScope.ID,
-                                ResolvedScope.InventoryUserID,
-                                ResolvedScope.StockCategoryID,
-                                ResolvedScope.StockFamilyID,
-                                ResolvedScope.Department,
-                                ResolvedScope.SubDepartment,
-                            }
-                        });
+                            PendingList.Add(BuildItem(Requisition, Vessel, NormalPendingLevel, ResolvedScope, IsAdminOverride: false));
+                        }
+                    }
+
+                    // 2) Flow khusus ADMIN — level yang sudah di-approve oleh user ber-Role ADMIN
+                    //    tetap dianggap pending untuk SEMUA user ber-Role ADMIN (tidak perlu match scope)
+                    if (IsAdminUser && AdminApprovedLevels.Any())
+                    {
+                        foreach (var (Level, ApprovedByName) in AdminApprovedLevels)
+                        {
+                            var ResolvedScope = ResolveScope(Requisition, Vessel, Vessel.Group.ID, Level);
+                            PendingList.Add(BuildItem(Requisition, Vessel, Level, ResolvedScope, IsAdminOverride: true, ApprovedByName));
+                        }
                     }
                 }
 
