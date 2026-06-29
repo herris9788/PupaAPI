@@ -14,6 +14,7 @@ using Pupa.BusinessObjects.Beesuite;
 using Pupa.BusinessObjects;
 using System.Collections.ObjectModel;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -211,6 +212,10 @@ namespace Pupa.Controllers
                 _db.RequisitionNotaVerification.Add(row);
 
             await _db.SaveChangesAsync(cancellationToken);
+
+            await SendTelegramNotaDebugAsync(
+                $"START verify nota\nRequisitionID: {id}\nAttachmentID: {invoiceRel.AttachmentID}\nFile: {invoiceRel.Attachment.FileName}\nForce: {force}",
+                cancellationToken);
 
             await RunNotaVerificationAsync(row, invoiceRel.Attachment, webhookUrl, cancellationToken);
             await _db.SaveChangesAsync(cancellationToken);
@@ -431,6 +436,9 @@ namespace Pupa.Controllers
             catch (Exception ex)
             {
                 MarkNotaVerificationFailed(row, $"Attachment content is invalid: {ex.Message}");
+                await SendTelegramNotaDebugAsync(
+                    $"FAILED verify nota\nRequisitionID: {row.RequisitionID}\nAttachmentID: {row.AttachmentID}\nFile: {row.FileName}\nError: {row.ErrorMessage}",
+                    cancellationToken);
                 return;
             }
 
@@ -452,6 +460,10 @@ namespace Pupa.Controllers
                     using var response = await client.PostAsync(webhookUrl, request, cancellationToken);
                     var body = await response.Content.ReadAsStringAsync(cancellationToken);
 
+                    await SendTelegramNotaDebugAsync(
+                        $"ATTEMPT {attempt}/{maxAttempts} verify nota\nRequisitionID: {row.RequisitionID}\nAttachmentID: {row.AttachmentID}\nHTTP: {(int)response.StatusCode}\nResponse: {TrimTelegramText(body, 1200)}",
+                        cancellationToken);
+
                     if (response.IsSuccessStatusCode)
                     {
                         var result = JsonSerializer.Deserialize<NotaVerificationWebhookResponse>(
@@ -461,6 +473,9 @@ namespace Pupa.Controllers
                         if (result == null)
                         {
                             MarkNotaVerificationFailed(row, "Nota verification webhook returned an empty response.");
+                            await SendTelegramNotaDebugAsync(
+                                $"FAILED verify nota\nRequisitionID: {row.RequisitionID}\nAttachmentID: {row.AttachmentID}\nError: {row.ErrorMessage}",
+                                cancellationToken);
                             return;
                         }
 
@@ -474,6 +489,9 @@ namespace Pupa.Controllers
                         row.ErrorMessage = null;
                         row.NextRetryAt = null;
                         row.UpdatedAt = DateTime.UtcNow;
+                        await SendTelegramNotaDebugAsync(
+                            $"SUCCESS verify nota\nRequisitionID: {row.RequisitionID}\nAttachmentID: {row.AttachmentID}\nStatus: {row.VerificationStatus}\nInvoiceDate: {row.InvoiceDate:yyyy-MM-dd}\nVendor: {row.VendorName}\nAgeInDays: {row.AgeInDays}\nOverdueDays: {row.OverdueDays}\nRetryCount: {row.RetryCount}",
+                            cancellationToken);
                         return;
                     }
 
@@ -484,12 +502,18 @@ namespace Pupa.Controllers
                 catch (Exception ex) when (attempt < maxAttempts)
                 {
                     lastError = ex.Message;
+                    await SendTelegramNotaDebugAsync(
+                        $"ATTEMPT {attempt}/{maxAttempts} verify nota exception\nRequisitionID: {row.RequisitionID}\nAttachmentID: {row.AttachmentID}\nError: {TrimTelegramText(ex.Message, 1200)}",
+                        cancellationToken);
                 }
 
                 await Task.Delay(TimeSpan.FromSeconds(attempt * 2), cancellationToken);
             }
 
             MarkNotaVerificationFailed(row, lastError ?? "Nota verification webhook failed.");
+            await SendTelegramNotaDebugAsync(
+                $"FAILED verify nota\nRequisitionID: {row.RequisitionID}\nAttachmentID: {row.AttachmentID}\nFile: {row.FileName}\nRetryCount: {row.RetryCount}\nError: {TrimTelegramText(row.ErrorMessage, 1200)}",
+                cancellationToken);
         }
 
         private static byte[] DecodeAttachmentBase64(Attachment attachment)
@@ -524,6 +548,47 @@ namespace Pupa.Controllers
             row.ErrorMessage = errorMessage;
             row.NextRetryAt = null;
             row.UpdatedAt = DateTime.UtcNow;
+        }
+
+        private async Task SendTelegramNotaDebugAsync(string message, CancellationToken cancellationToken)
+        {
+            var enabled = _configuration.GetValue<bool>("TelegramDebug:Enabled");
+            var sendMessageUrl = _configuration["TelegramDebug:SendMessageUrl"];
+            var chatId = _configuration["TelegramDebug:ChatId"];
+
+            if (!enabled || string.IsNullOrWhiteSpace(sendMessageUrl) || string.IsNullOrWhiteSpace(chatId))
+                return;
+
+            try
+            {
+                var payload = new
+                {
+                    chat_id = chatId,
+                    text = TrimTelegramText($"[PupaAPI Nota Debug]\n{message}", 3900)
+                };
+
+                using var content = new StringContent(
+                    JsonSerializer.Serialize(payload),
+                    Encoding.UTF8,
+                    "application/json");
+
+                var client = _httpClientFactory.CreateClient();
+                await client.PostAsync(sendMessageUrl, content, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Telegram nota debug failed: {ex.Message}");
+            }
+        }
+
+        private static string TrimTelegramText(string? value, int maxLength)
+        {
+            if (string.IsNullOrEmpty(value))
+                return string.Empty;
+
+            return value.Length <= maxLength
+                ? value
+                : value[..maxLength] + "...";
         }
 
         private sealed class NotaVerificationWebhookResponse
