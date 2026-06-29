@@ -39,8 +39,6 @@ namespace Pupa.BusinessObjects.Beesuite
         private decimal? _DimensionLength;
         private decimal? _DimensionWidth;
         private decimal? _DimensionThickness;
-        private decimal? _OuterDiameter;
-        private decimal? _InnerDiameter;
         private decimal? _WeightPerUnit;
         private decimal? _GrossWeightPerUnit;
         private string? _LengthUnit;
@@ -296,11 +294,7 @@ namespace Pupa.BusinessObjects.Beesuite
         [Column("DimensionThickness")]
         public virtual decimal? DimensionThickness { get { return _DimensionThickness; } set { OnPropertyChanging(); _DimensionThickness = value; OnPropertyChanged(); } }
 
-        [Column("OuterDiameter")]
-        public virtual decimal? OuterDiameter { get { return _OuterDiameter; } set { OnPropertyChanging(); _OuterDiameter = value; OnPropertyChanged(); } }
-
-        [Column("InnerDiameter")]
-        public virtual decimal? InnerDiameter { get { return _InnerDiameter; } set { OnPropertyChanging(); _InnerDiameter = value; OnPropertyChanged(); } }
+       
 
         [Column("WeightPerUnit")]
         public virtual decimal? WeightPerUnit { get { return _WeightPerUnit; } set { OnPropertyChanging(); _WeightPerUnit = value; OnPropertyChanged(); } }
