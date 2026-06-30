@@ -770,6 +770,19 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+        private string? _LastRevertedBy { get; set; }
+        public virtual string? LastRevertedBy
+        {
+            get => _LastRevertedBy;
+            set
+            {
+                if (_LastRevertedBy == value) return;
+                OnPropertyChanging();
+                _LastRevertedBy = value;
+                OnPropertyChanged();
+            }
+        }
+
         [NotMapped]
         public virtual ObservableCollection<LogActivity> Logs { get; set; } = new ObservableCollection<LogActivity>();
         public virtual ObservableCollection<RequisitionEngineNumber> EngineNumbers { get; set; }
