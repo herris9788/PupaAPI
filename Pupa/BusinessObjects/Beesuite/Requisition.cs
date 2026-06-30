@@ -782,6 +782,30 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+        private bool? _Revised { get; set; }
+        public virtual bool? Revised
+        {
+            get => _Revised;
+            set
+            {
+                if (_Revised == value) return;
+                OnPropertyChanging();
+                _Revised = value;
+                OnPropertyChanged();
+            }
+        }
+        private string? _RevisedBy { get; set; }
+        public virtual string? RevisedBy
+        {
+            get => _RevisedBy;
+            set
+            {
+                if (_RevisedBy == value) return;
+                OnPropertyChanging();
+                _RevisedBy = value;
+                OnPropertyChanged();
+            }
+        }
 
         [NotMapped]
         public virtual ObservableCollection<LogActivity> Logs { get; set; } = new ObservableCollection<LogActivity>();
