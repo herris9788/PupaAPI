@@ -447,6 +447,42 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+        private decimal? _InnerDiameter { get; set; }
+        public virtual decimal? InnerDiameter
+        {
+            get => _InnerDiameter;
+            set
+            {
+                if (_InnerDiameter == value) return;
+                OnPropertyChanging();
+                _InnerDiameter = value;
+                OnPropertyChanged();
+            }
+        }
+        private decimal? _OuterDiameter { get; set; }
+        public virtual decimal? OuterDiameter
+        {
+            get => _OuterDiameter;
+            set
+            {
+                if (_OuterDiameter == value) return;
+                OnPropertyChanging();
+                _OuterDiameter = value;
+                OnPropertyChanged();
+            }
+        }
+        private decimal? _Length { get; set; }
+        public virtual decimal? Length
+        {
+            get => _Length;
+            set
+            {
+                if (_Length == value) return;
+                OnPropertyChanging();
+                _Length = value;
+                OnPropertyChanged();
+            }
+        }
         public virtual ObservableCollection<RequisitionDetailAttachmentRel> RequisitionDetailAttachmentRels { get; set; }
 
     }

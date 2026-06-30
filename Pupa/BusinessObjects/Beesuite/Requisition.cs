@@ -346,6 +346,30 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+        private string? _LastRevertReason { get; set; }
+        public virtual string? LastRevertReason
+        {
+            get => _LastRevertReason;
+            set
+            {
+                if (_LastRevertReason == value) return;
+                OnPropertyChanging();
+                _LastRevertReason = value;
+                OnPropertyChanged();
+            }
+        }
+        private DateTime? _LastRevertedAt { get; set; }
+        public virtual DateTime? LastRevertedAt
+        {
+            get => _LastRevertedAt;
+            set
+            {
+                if (_LastRevertedAt == value) return;
+                OnPropertyChanging();
+                _LastRevertedAt = value;
+                OnPropertyChanged();
+            }
+        }
         [StringLength(500)]
         public virtual string? RequisitionNumber
         {
