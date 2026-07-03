@@ -108,7 +108,15 @@ namespace Pupa.Configs
             {
                 patch.Patch(entity);
 
-                if (entity is Requisition requisition && requisition.RevertStatus != null)
+                var patchUpdatesRevertStatus = patch.GetChangedPropertyNames()
+                    .Any(propertyName => string.Equals(
+                        propertyName,
+                        nameof(Requisition.RevertStatus),
+                        StringComparison.OrdinalIgnoreCase));
+
+                if (entity is Requisition requisition &&
+                    requisition.RevertStatus != null &&
+                    !patchUpdatesRevertStatus)
                 {
                     requisition.RevertStatus = null;
                 }

@@ -346,6 +346,30 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+        private string? _LastRevertReason { get; set; }
+        public virtual string? LastRevertReason
+        {
+            get => _LastRevertReason;
+            set
+            {
+                if (_LastRevertReason == value) return;
+                OnPropertyChanging();
+                _LastRevertReason = value;
+                OnPropertyChanged();
+            }
+        }
+        private DateTime? _LastRevertedAt { get; set; }
+        public virtual DateTime? LastRevertedAt
+        {
+            get => _LastRevertedAt;
+            set
+            {
+                if (_LastRevertedAt == value) return;
+                OnPropertyChanging();
+                _LastRevertedAt = value;
+                OnPropertyChanged();
+            }
+        }
         [StringLength(500)]
         public virtual string? RequisitionNumber
         {
@@ -770,6 +794,103 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+        private string? _LastRevertedBy { get; set; }
+        public virtual string? LastRevertedBy
+        {
+            get => _LastRevertedBy;
+            set
+            {
+                if (_LastRevertedBy == value) return;
+                OnPropertyChanging();
+                _LastRevertedBy = value;
+                OnPropertyChanged();
+            }
+        }
+        private bool? _Revised { get; set; }
+        public virtual bool? Revised
+        {
+            get => _Revised;
+            set
+            {
+                if (_Revised == value) return;
+                OnPropertyChanging();
+                _Revised = value;
+                OnPropertyChanged();
+            }
+        }
+        private string? _RevisedBy { get; set; }
+        public virtual string? RevisedBy
+        {
+            get => _RevisedBy;
+            set
+            {
+                if (_RevisedBy == value) return;
+                OnPropertyChanging();
+                _RevisedBy = value;
+                OnPropertyChanged();
+            }
+        }
+        private int? _LastRevertedLevel { get; set; }
+        public virtual int? LastRevertedLevel
+        {
+            get => _LastRevertedLevel;
+            set
+            {
+                if (_LastRevertedLevel == value) return;
+                OnPropertyChanging();
+                _LastRevertedLevel = value;
+                OnPropertyChanged();
+            }
+        }
+        private int _RevisionNo { get; set; }
+        public virtual int RevisionNo
+        {
+            get => _RevisionNo;
+            set
+            {
+                if (_RevisionNo == value) return;
+                OnPropertyChanging();
+                _RevisionNo = value;
+                OnPropertyChanged();
+            }
+        }
+        private string? _LastResubmittedBy { get; set; }
+        public virtual string? LastResubmittedBy
+        {
+            get => _LastResubmittedBy;
+            set
+            {
+                if (_LastResubmittedBy == value) return;
+                OnPropertyChanging();
+                _LastResubmittedBy = value;
+                OnPropertyChanged();
+            }
+        }
+        private DateTime? _LastResubmittedAt { get; set; }
+        public virtual DateTime? LastResubmittedAt
+        {
+            get => _LastResubmittedAt;
+            set
+            {
+                if (_LastResubmittedAt == value) return;
+                OnPropertyChanging();
+                _LastResubmittedAt = value;
+                OnPropertyChanged();
+            }
+        }
+        private string? _OfflineRequisitionNumber { get; set; }
+        public virtual string? OfflineRequisitionNumber
+        {
+            get => _OfflineRequisitionNumber;
+            set
+            {
+                if (_OfflineRequisitionNumber == value) return;
+                OnPropertyChanging();
+                _OfflineRequisitionNumber = value;
+                OnPropertyChanged();
+            }
+        }
+
         [NotMapped]
         public virtual ObservableCollection<LogActivity> Logs { get; set; } = new ObservableCollection<LogActivity>();
         public virtual ObservableCollection<RequisitionEngineNumber> EngineNumbers { get; set; }

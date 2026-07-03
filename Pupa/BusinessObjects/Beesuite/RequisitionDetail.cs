@@ -471,6 +471,42 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+        private decimal? _Length { get; set; }
+        public virtual decimal? Length
+        {
+            get => _Length;
+            set
+            {
+                if (_Length == value) return;
+                OnPropertyChanging();
+                _Length = value;
+                OnPropertyChanged();
+            }
+        }
+        private string? _PurposeOfRequest { get; set; }
+        public virtual string? PurposeOfRequest
+        {
+            get => _PurposeOfRequest;
+            set
+            {
+                if (_PurposeOfRequest == value) return;
+                OnPropertyChanging();
+                _PurposeOfRequest = value;
+                OnPropertyChanged();
+            }
+        }
+        private string? _ReplacementReason { get; set; }
+        public virtual string? ReplacementReason
+        {
+            get => _ReplacementReason;
+            set
+            {
+                if (_ReplacementReason == value) return;
+                OnPropertyChanging();
+                _ReplacementReason = value;
+                OnPropertyChanged();
+            }
+        }
         public virtual ObservableCollection<RequisitionDetailAttachmentRel> RequisitionDetailAttachmentRels { get; set; }
 
     }
