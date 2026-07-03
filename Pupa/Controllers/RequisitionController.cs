@@ -172,50 +172,62 @@ namespace Pupa.Controllers
             if (!requisitionExists)
                 return NotFound($"Requisition with ID {id} not found.");
 
-            var invoiceRel = await _db.RequisitionAttachmentRel
+            var invoiceRels = await _db.RequisitionAttachmentRel
                 .Include(x => x.Attachment)
                 .Where(x => x.RequisitionID == id &&
                             x.Type != null &&
                             x.Type.ToLower() == InvoiceReceiptType.ToLower() &&
                             x.AttachmentID.HasValue)
-                .OrderByDescending(x => x.ID)
-                .FirstOrDefaultAsync(cancellationToken);
+                .OrderBy(x => x.ID)
+                .ToListAsync(cancellationToken);
 
-            if (invoiceRel?.Attachment == null)
+            invoiceRels = invoiceRels.Where(x => x.Attachment != null).ToList();
+
+            if (invoiceRels.Count == 0)
                 return NotFound($"Invoice receipt attachment for requisition {id} not found.");
 
-            var existing = await _db.RequisitionNotaVerification
-                .FirstOrDefaultAsync(x =>
-                    x.RequisitionID == id &&
-                    x.AttachmentID == invoiceRel.AttachmentID, cancellationToken);
+            var rows = new List<RequisitionNotaVerification>();
 
-            if (existing != null && existing.ScanStatus == "SUCCESS" && !force)
-                return Ok(existing);
-
-            var row = existing ?? new RequisitionNotaVerification
+            foreach (var invoiceRel in invoiceRels)
             {
-                RequisitionID = id,
-                RequisitionAttachmentRelID = invoiceRel.ID,
-                AttachmentID = invoiceRel.AttachmentID
-            };
+                var existing = await _db.RequisitionNotaVerification
+                    .FirstOrDefaultAsync(x =>
+                        x.RequisitionID == id &&
+                        x.AttachmentID == invoiceRel.AttachmentID, cancellationToken);
 
-            row.RequisitionAttachmentRelID = invoiceRel.ID;
-            row.AttachmentID = invoiceRel.AttachmentID;
-            row.FileName = invoiceRel.Attachment.FileName;
-            row.ScanStatus = "PROCESSING";
-            row.ErrorMessage = null;
-            row.LastAttemptAt = DateTime.UtcNow;
-            row.NextRetryAt = null;
+                if (existing != null && existing.ScanStatus == "SUCCESS" && !force)
+                {
+                    rows.Add(existing);
+                    continue;
+                }
 
-            if (existing == null)
-                _db.RequisitionNotaVerification.Add(row);
+                var row = existing ?? new RequisitionNotaVerification
+                {
+                    RequisitionID = id,
+                    RequisitionAttachmentRelID = invoiceRel.ID,
+                    AttachmentID = invoiceRel.AttachmentID
+                };
 
-            await _db.SaveChangesAsync(cancellationToken);
+                row.RequisitionAttachmentRelID = invoiceRel.ID;
+                row.AttachmentID = invoiceRel.AttachmentID;
+                row.FileName = invoiceRel.Attachment!.FileName;
+                row.ScanStatus = "PROCESSING";
+                row.ErrorMessage = null;
+                row.LastAttemptAt = DateTime.UtcNow;
+                row.NextRetryAt = null;
 
-            await RunNotaVerificationAsync(row, invoiceRel.Attachment, webhookUrl, cancellationToken);
-            await _db.SaveChangesAsync(cancellationToken);
+                if (existing == null)
+                    _db.RequisitionNotaVerification.Add(row);
 
-            return Ok(row);
+                await _db.SaveChangesAsync(cancellationToken);
+
+                await RunNotaVerificationAsync(row, invoiceRel.Attachment, webhookUrl, cancellationToken);
+                await _db.SaveChangesAsync(cancellationToken);
+
+                rows.Add(row);
+            }
+
+            return Ok(rows);
         }
 
         private async Task<IActionResult?> ApplyFreonEvaluationAsync(Requisition requisition, DateTime now)
@@ -471,9 +483,20 @@ namespace Pupa.Controllers
                         NotaVerificationWebhookResponse? result;
                         try
                         {
-                            result = JsonSerializer.Deserialize<NotaVerificationWebhookResponse>(
-                                body,
-                                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                            var trimmedBody = body.TrimStart();
+                            if (trimmedBody.StartsWith("["))
+                            {
+                                var resultList = JsonSerializer.Deserialize<List<NotaVerificationWebhookResponse>>(
+                                    body,
+                                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                                result = resultList?.FirstOrDefault();
+                            }
+                            else
+                            {
+                                result = JsonSerializer.Deserialize<NotaVerificationWebhookResponse>(
+                                    body,
+                                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                            }
                         }
                         catch (JsonException ex)
                         {
