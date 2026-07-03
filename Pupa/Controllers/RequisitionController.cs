@@ -12,6 +12,7 @@ using System.Data;
 using Microsoft.EntityFrameworkCore;
 using Pupa.BusinessObjects.Beesuite;
 using Pupa.BusinessObjects;
+using Pupa.Configs;
 using System.Collections.ObjectModel;
 using System.Net;
 using System.Text.Json;
@@ -87,6 +88,10 @@ namespace Pupa.Controllers
                 var freonValidationError = await ApplyFreonEvaluationAsync(Body, now);
                 if (freonValidationError != null)
                     return freonValidationError;
+
+                var wireRopeValidationError = await ApplyWireRopeEvaluationAsync(Body);
+                if (wireRopeValidationError != null)
+                    return wireRopeValidationError;
 
                 await _db.AddAsync(Body);
                 await _db.SaveChangesAsync();
@@ -300,6 +305,107 @@ namespace Pupa.Controllers
                         detail.FreonEvaluationScenario
                     });
                 }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Validates the "Define Item" mandatory requirements from the Wire Rope
+        /// Requisition Process Flow diagram for every T31.001-prefixed line item:
+        /// Placement (must be a mapped option), Length (Roll + Meter, both
+        /// mandatory) and End Type. Eye length inputs stay optional — see the
+        /// TODO(wire-rope) note below.
+        /// </summary>
+        private async Task<IActionResult?> ApplyWireRopeEvaluationAsync(Requisition requisition)
+        {
+            if (requisition.RequisitionDetails == null || requisition.RequisitionDetails.Count == 0)
+                return null;
+
+            var itemIds = requisition.RequisitionDetails
+                .Where(x => x.ItemID.HasValue && x.ItemID.Value > 0)
+                .Select(x => x.ItemID!.Value)
+                .Distinct()
+                .ToList();
+
+            if (itemIds.Count == 0)
+                return null;
+
+            var wireRopeItemIds = await _db.Item
+                .AsNoTracking()
+                .Where(x => itemIds.Contains(x.ItemID) && x.ItemCode != null && x.ItemCode.StartsWith(WireRopePolicy.WireRopeItemCodePrefix))
+                .Select(x => x.ItemID)
+                .ToListAsync();
+
+            if (wireRopeItemIds.Count == 0)
+                return null;
+
+            var wireRopeItemIdSet = wireRopeItemIds.ToHashSet();
+
+            foreach (var detail in requisition.RequisitionDetails.Where(x => x.ItemID.HasValue && wireRopeItemIdSet.Contains(x.ItemID.Value)))
+            {
+                var placement = detail.PlacementArea?.Trim();
+                if (string.IsNullOrWhiteSpace(placement))
+                {
+                    return BadRequest(new
+                    {
+                        Message = "Placement is required for Wire Rope item T31.001.",
+                        ItemID = detail.ItemID
+                    });
+                }
+                if (!WireRopePolicy.IsValidPlacement(placement))
+                {
+                    return BadRequest(new
+                    {
+                        Message = $"Placement '{placement}' is not a mapped option for Wire Rope item T31.001.",
+                        ItemID = detail.ItemID
+                    });
+                }
+                detail.PlacementArea = placement;
+
+                if (!detail.WireRopeRollQty.HasValue || detail.WireRopeRollQty.Value <= 0)
+                {
+                    return BadRequest(new
+                    {
+                        Message = "Roll quantity is required for Wire Rope item T31.001.",
+                        ItemID = detail.ItemID
+                    });
+                }
+
+                if (!detail.Length.HasValue || detail.Length.Value <= 0)
+                {
+                    return BadRequest(new
+                    {
+                        Message = "Length in meter is required for Wire Rope item T31.001.",
+                        ItemID = detail.ItemID
+                    });
+                }
+
+                var endType = detail.WireRopeEndType?.Trim();
+                if (string.IsNullOrWhiteSpace(endType))
+                {
+                    return BadRequest(new
+                    {
+                        Message = "End type of the wire rope is required for Wire Rope item T31.001.",
+                        ItemID = detail.ItemID
+                    });
+                }
+                if (!WireRopePolicy.IsValidEndType(endType))
+                {
+                    return BadRequest(new
+                    {
+                        Message = $"'{endType}' is not a valid Wire Rope end type.",
+                        ItemID = detail.ItemID
+                    });
+                }
+                detail.WireRopeEndType = endType;
+
+                // Eye length inputs (WireRopeEyeLengthM / Left / Right) are optional
+                // regardless of end type — "if left blank, the system uses the
+                // default size from vendor" per the flow diagram.
+                // TODO(wire-rope): no vendor default eye size table exists yet
+                // (checked IC_Items and the source spreadsheets — no data). Wire in
+                // the default lookup once that data is supplied.
             }
 
             return null;

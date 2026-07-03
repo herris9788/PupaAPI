@@ -509,5 +509,66 @@ namespace Pupa.BusinessObjects.Beesuite
         }
         public virtual ObservableCollection<RequisitionDetailAttachmentRel> RequisitionDetailAttachmentRels { get; set; }
 
+        private decimal? _WireRopeRollQty { get; set; }
+        public virtual decimal? WireRopeRollQty
+        {
+            get => _WireRopeRollQty;
+            set
+            {
+                if (_WireRopeRollQty == value) return;
+                OnPropertyChanging();
+                _WireRopeRollQty = value;
+                OnPropertyChanged();
+            }
+        }
+        private string? _WireRopeEndType { get; set; }
+        public virtual string? WireRopeEndType
+        {
+            get => _WireRopeEndType;
+            set
+            {
+                if (_WireRopeEndType == value) return;
+                OnPropertyChanging();
+                _WireRopeEndType = value;
+                OnPropertyChanged();
+            }
+        }
+        private decimal? _WireRopeEyeLengthM { get; set; }
+        public virtual decimal? WireRopeEyeLengthM
+        {
+            get => _WireRopeEyeLengthM;
+            set
+            {
+                if (_WireRopeEyeLengthM == value) return;
+                OnPropertyChanging();
+                _WireRopeEyeLengthM = value;
+                OnPropertyChanged();
+            }
+        }
+        private decimal? _WireRopeLeftEyeLengthM { get; set; }
+        public virtual decimal? WireRopeLeftEyeLengthM
+        {
+            get => _WireRopeLeftEyeLengthM;
+            set
+            {
+                if (_WireRopeLeftEyeLengthM == value) return;
+                OnPropertyChanging();
+                _WireRopeLeftEyeLengthM = value;
+                OnPropertyChanged();
+            }
+        }
+        private decimal? _WireRopeRightEyeLengthM { get; set; }
+        public virtual decimal? WireRopeRightEyeLengthM
+        {
+            get => _WireRopeRightEyeLengthM;
+            set
+            {
+                if (_WireRopeRightEyeLengthM == value) return;
+                OnPropertyChanging();
+                _WireRopeRightEyeLengthM = value;
+                OnPropertyChanged();
+            }
+        }
+
     }
 }
