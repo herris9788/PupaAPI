@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Metadata;
+using BeeSuite.WebApi.BusinessObjects.Beesuite;
 
 namespace Pupa.BusinessObjects
 {
@@ -89,6 +90,7 @@ namespace Pupa.BusinessObjects
         public DbSet<JobAttachment> JobAttachment { get; set; }
         public DbSet<Usage> Usage { get; set; }
         public DbSet<UsageDetail> UsageDetail { get; set; }
+        public DbSet<CacheControl> CacheControl { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {

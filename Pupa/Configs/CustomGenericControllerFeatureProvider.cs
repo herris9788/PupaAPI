@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.OData.Deltas;
 using System.Reflection;
+using BeeSuite.WebApi.BusinessObjects.Beesuite;
 
 namespace Pupa.Configs
 {
@@ -71,7 +72,8 @@ namespace Pupa.Configs
             typeof(UserApprovalDelegation),
             typeof(Usage),
             typeof(UsageDetail),
-            typeof(Item)
+            typeof(Item),
+            typeof(CacheControl)
         };
         public static readonly Type[] EntityTypesExternal = new Type[] {
           //typeof(SH_01), typeof(SH_02)

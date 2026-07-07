@@ -317,6 +317,17 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+        private string? _Updated { get; set; }
+        public virtual string? Updated        {
+            get => _Updated;
+            set
+            {
+                if (_Updated == value) return;
+                OnPropertyChanging();
+                _Updated = value;
+                OnPropertyChanged();
+            }
+        }
         public virtual ObservableCollection<UserApprovalScope>? UserApprovalScopes { get; set; }
     }
 }
