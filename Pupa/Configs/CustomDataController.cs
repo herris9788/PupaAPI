@@ -6,7 +6,9 @@ using Microsoft.AspNetCore.OData.Query;
 using Microsoft.AspNetCore.OData.Results;
 using Microsoft.AspNetCore.OData.Routing.Controllers;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace Pupa.Configs
 {
@@ -93,9 +95,9 @@ namespace Pupa.Configs
         }
 
         // PATCH /{EntitySet}(key)
-        public async Task<IActionResult> Patch(int key, [FromBody] Delta<TEntity> patch)
+        public async Task<IActionResult> Patch(int key, [FromBody] JsonElement patch)
         {
-            if (patch == null)
+            if (patch.ValueKind != JsonValueKind.Object)
             {
                 return BadRequest("Incorrect body.");
             }
@@ -106,9 +108,9 @@ namespace Pupa.Configs
             }
             try
             {
-                patch.Patch(entity);
+                var changedPropertyNames = ApplyPatch(entity, patch);
 
-                var patchUpdatesRevertStatus = patch.GetChangedPropertyNames()
+                var patchUpdatesRevertStatus = changedPropertyNames
                     .Any(propertyName => string.Equals(
                         propertyName,
                         nameof(Requisition.RevertStatus),
@@ -128,6 +130,57 @@ namespace Pupa.Configs
             {
                 return BadRequest(e.Message);
             }
+        }
+
+        private static HashSet<string> ApplyPatch(TEntity entity, JsonElement patch)
+        {
+            var changedPropertyNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
+            foreach (var jsonProperty in patch.EnumerateObject())
+            {
+                if (jsonProperty.Name.StartsWith("@", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var clrProperty = typeof(TEntity).GetProperty(
+                    jsonProperty.Name,
+                    BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+
+                if (clrProperty == null || !clrProperty.CanWrite)
+                {
+                    continue;
+                }
+
+                var propertyType = clrProperty.PropertyType;
+                object? value;
+
+                if (jsonProperty.Value.ValueKind == JsonValueKind.Null)
+                {
+                    if (propertyType.IsValueType && Nullable.GetUnderlyingType(propertyType) == null)
+                    {
+                        throw new InvalidOperationException($"Property '{clrProperty.Name}' cannot be null.");
+                    }
+
+                    value = null;
+                }
+                else
+                {
+                    value = JsonSerializer.Deserialize(
+                        jsonProperty.Value.GetRawText(),
+                        propertyType,
+                        jsonOptions);
+                }
+
+                clrProperty.SetValue(entity, value);
+                changedPropertyNames.Add(clrProperty.Name);
+            }
+
+            return changedPropertyNames;
         }
 
         // PUT /{EntitySet}(key)
