@@ -830,6 +830,18 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+        private DateTime? _RevisedAt { get; set; }
+        public virtual DateTime? RevisedAt
+        {
+            get => _RevisedAt;
+            set
+            {
+                if (_RevisedAt == value) return;
+                OnPropertyChanging();
+                _RevisedAt = value;
+                OnPropertyChanged();
+            }
+        }
         private int? _LastRevertedLevel { get; set; }
         public virtual int? LastRevertedLevel
         {
