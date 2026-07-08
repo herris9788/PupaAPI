@@ -89,7 +89,7 @@ namespace Pupa.Controllers
                 if (freonValidationError != null)
                     return freonValidationError;
 
-                var wireRopeValidationError = await ApplyWireRopeEvaluationAsync(Body);
+                var wireRopeValidationError = await ApplyWireRopeEvaluationAsync(Body, vessel);
                 if (wireRopeValidationError != null)
                     return wireRopeValidationError;
 
@@ -329,7 +329,7 @@ namespace Pupa.Controllers
         /// mandatory) and End Type. Eye length inputs stay optional — see the
         /// TODO(wire-rope) note below.
         /// </summary>
-        private async Task<IActionResult?> ApplyWireRopeEvaluationAsync(Requisition requisition)
+        private async Task<IActionResult?> ApplyWireRopeEvaluationAsync(Requisition requisition, InventoryUser? vessel)
         {
             if (requisition.RequisitionDetails == null || requisition.RequisitionDetails.Count == 0)
                 return null;
@@ -354,6 +354,15 @@ namespace Pupa.Controllers
 
             var wireRopeItemIdSet = wireRopeItemIds.ToHashSet();
 
+            var groupCode = vessel == null
+                ? null
+                : await _db.InventoryUserGroup
+                    .Where(g => g.GroupID == vessel.GroupID && g.DB == vessel.DB)
+                    .Select(g => g.GroupCode)
+                    .FirstOrDefaultAsync();
+
+            var (fleet, allowedPlacements) = WireRopePolicy.ResolveFleetAndPlacements(vessel?.InventoryUserName ?? "", groupCode);
+
             foreach (var detail in requisition.RequisitionDetails.Where(x => x.ItemID.HasValue && wireRopeItemIdSet.Contains(x.ItemID.Value)))
             {
                 var placement = detail.PlacementArea?.Trim();
@@ -365,11 +374,11 @@ namespace Pupa.Controllers
                         ItemID = detail.ItemID
                     });
                 }
-                if (!WireRopePolicy.IsValidPlacement(placement))
+                if (!allowedPlacements.Contains(placement))
                 {
                     return BadRequest(new
                     {
-                        Message = $"Placement '{placement}' is not a mapped option for Wire Rope item T31.001.",
+                        Message = $"Placement '{placement}' is not a mapped option for Wire Rope item T31.001 (fleet: {fleet}).",
                         ItemID = detail.ItemID
                     });
                 }
