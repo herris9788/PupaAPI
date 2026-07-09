@@ -365,7 +365,13 @@ namespace Pupa.Controllers
 
             foreach (var detail in requisition.RequisitionDetails.Where(x => x.ItemID.HasValue && wireRopeItemIdSet.Contains(x.ItemID.Value)))
             {
+                // TEMP DISABLED (per product request): the 4 mandatory-field
+                // checks below (Placement, Roll, Length/Meter, End Type) are
+                // commented out so wire rope items can be submitted without
+                // them for now. Re-enable by uncommenting once the freeze is
+                // lifted. Values are still trimmed/assigned as-is when present.
                 var placement = detail.PlacementArea?.Trim();
+                /*
                 if (string.IsNullOrWhiteSpace(placement))
                 {
                     return BadRequest(new
@@ -382,8 +388,10 @@ namespace Pupa.Controllers
                         ItemID = detail.ItemID
                     });
                 }
-                detail.PlacementArea = placement;
+                */
+                if (placement != null) detail.PlacementArea = placement;
 
+                /*
                 if (!detail.WireRopeRollQty.HasValue || detail.WireRopeRollQty.Value <= 0)
                 {
                     return BadRequest(new
@@ -401,8 +409,10 @@ namespace Pupa.Controllers
                         ItemID = detail.ItemID
                     });
                 }
+                */
 
                 var endType = detail.WireRopeEndType?.Trim();
+                /*
                 if (string.IsNullOrWhiteSpace(endType))
                 {
                     return BadRequest(new
@@ -419,7 +429,8 @@ namespace Pupa.Controllers
                         ItemID = detail.ItemID
                     });
                 }
-                detail.WireRopeEndType = endType;
+                */
+                if (endType != null) detail.WireRopeEndType = endType;
 
                 // Eye length inputs (WireRopeEyeLengthM / Left / Right) are optional
                 // regardless of end type — "if left blank, the system uses the
