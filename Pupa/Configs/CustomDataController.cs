@@ -174,6 +174,16 @@ namespace Pupa.Configs
                         jsonProperty.Value.GetRawText(),
                         propertyType,
                         jsonOptions);
+
+                    // DateTime columns in this DB store server-local (WIB) wall-clock
+                    // values with no offset (e.g. CreatedAt via DateTime.Now). Incoming
+                    // ISO-8601 strings with a "Z"/offset deserialize as Kind=Utc, so they
+                    // must be converted to local time here to match that convention -
+                    // otherwise the stored value ends up ~7h off (see ApprovedByNAt bug).
+                    if (value is DateTime dateTimeValue && dateTimeValue.Kind == DateTimeKind.Utc)
+                    {
+                        value = dateTimeValue.ToLocalTime();
+                    }
                 }
 
                 clrProperty.SetValue(entity, value);
