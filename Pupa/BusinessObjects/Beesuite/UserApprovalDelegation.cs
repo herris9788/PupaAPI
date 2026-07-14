@@ -96,6 +96,16 @@ namespace Pupa.BusinessObjects.Beesuite
             set { OnPropertyChanging(); _createdBy = value; OnPropertyChanged(); }
         }
 
+        private string? _reason;
+
+        /// <summary>Reason the original approver is away (e.g. Annual Leave, Sick Leave, Official Duty).</summary>
+        [Column("Reason")]
+        public virtual string? Reason
+        {
+            get => _reason;
+            set { OnPropertyChanging(); _reason = value; OnPropertyChanged(); }
+        }
+
         // ── Navigation ───────────────────────────────────────────────────────
         [ForeignKey("FromUserID")]
         public virtual User? FromUser { get; set; }
