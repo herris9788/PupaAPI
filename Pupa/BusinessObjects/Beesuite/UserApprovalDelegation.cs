@@ -106,6 +106,21 @@ namespace Pupa.BusinessObjects.Beesuite
             set { OnPropertyChanging(); _reason = value; OnPropertyChanged(); }
         }
 
+        private string? _Department;
+        [Column("Department")]
+        public virtual string? Department
+        {
+            get => _Department;
+            set { OnPropertyChanging(); _Department = value; OnPropertyChanged(); }
+        }
+        private string? _SubDepartment;
+        [Column("SubDepartment")]
+        public virtual string? SubDepartment
+        {
+            get => _SubDepartment;
+            set { OnPropertyChanging(); _SubDepartment = value; OnPropertyChanged(); }
+        }
+
         // ── Navigation ───────────────────────────────────────────────────────
         [ForeignKey("FromUserID")]
         public virtual User? FromUser { get; set; }
