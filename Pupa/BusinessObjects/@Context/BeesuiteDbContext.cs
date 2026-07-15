@@ -91,6 +91,8 @@ namespace Pupa.BusinessObjects
         public DbSet<Usage> Usage { get; set; }
         public DbSet<UsageDetail> UsageDetail { get; set; }
         public DbSet<CacheControl> CacheControl { get; set; }
+        public DbSet<CartItem> CartItem { get; set; }
+        public DbSet<CartItemAttachment> CartItemAttachment { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
