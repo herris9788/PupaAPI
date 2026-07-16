@@ -193,5 +193,30 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+        private string _DB { get; set; }
+        public virtual string? DB
+        {
+            get => _DB;
+            set
+            {
+                if (_DB == value) return;
+                OnPropertyChanging();
+                _DB = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private string _AppName { get; set; }
+        public virtual string? AppName
+        {
+            get => _AppName;
+            set
+            {
+                if (_AppName == value) return;
+                OnPropertyChanging();
+                _AppName = value;
+                OnPropertyChanged();
+            }
+        }
     }
 }
