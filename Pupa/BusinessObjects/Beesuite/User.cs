@@ -329,5 +329,48 @@ namespace Pupa.BusinessObjects.Beesuite
             }
         }
         public virtual ObservableCollection<UserApprovalScope>? UserApprovalScopes { get; set; }
+
+        // ── Biometric login (stored device-token, single device per user) ──────
+        // Biometric data never reaches the server: the device keeps a random
+        // token in its secure storage behind the fingerprint/face prompt, and
+        // only the SHA-256 hash of that token is stored here. Enrolling on a new
+        // device overwrites these (one biometric device per user). Clear
+        // BiometricTokenHash to revoke.
+        private string? _BiometricTokenHash { get; set; }
+        public virtual string? BiometricTokenHash
+        {
+            get => _BiometricTokenHash;
+            set { if (_BiometricTokenHash == value) return; OnPropertyChanging(); _BiometricTokenHash = value; OnPropertyChanged(); }
+        }
+        private string? _BiometricDeviceID { get; set; }
+        public virtual string? BiometricDeviceID
+        {
+            get => _BiometricDeviceID;
+            set { if (_BiometricDeviceID == value) return; OnPropertyChanging(); _BiometricDeviceID = value; OnPropertyChanged(); }
+        }
+        private string? _BiometricDeviceName { get; set; }
+        public virtual string? BiometricDeviceName
+        {
+            get => _BiometricDeviceName;
+            set { if (_BiometricDeviceName == value) return; OnPropertyChanging(); _BiometricDeviceName = value; OnPropertyChanged(); }
+        }
+        private string? _BiometricPlatform { get; set; }
+        public virtual string? BiometricPlatform
+        {
+            get => _BiometricPlatform;
+            set { if (_BiometricPlatform == value) return; OnPropertyChanging(); _BiometricPlatform = value; OnPropertyChanged(); }
+        }
+        private DateTime? _BiometricEnabledAt { get; set; }
+        public virtual DateTime? BiometricEnabledAt
+        {
+            get => _BiometricEnabledAt;
+            set { if (_BiometricEnabledAt == value) return; OnPropertyChanging(); _BiometricEnabledAt = value; OnPropertyChanged(); }
+        }
+        private DateTime? _BiometricLastUsedAt { get; set; }
+        public virtual DateTime? BiometricLastUsedAt
+        {
+            get => _BiometricLastUsedAt;
+            set { if (_BiometricLastUsedAt == value) return; OnPropertyChanging(); _BiometricLastUsedAt = value; OnPropertyChanged(); }
+        }
     }
 }
