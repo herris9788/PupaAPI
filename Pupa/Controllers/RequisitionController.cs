@@ -28,7 +28,6 @@ namespace Pupa.Controllers
         private const string FreonItemCodePrefix = "T05.002";
         private const string FreonAcSystem = "AC System";
         private const string FreonProvisionSystem = "Provision Refrigeration System";
-        private const string FreonDamageReportType = "FreonDamageReport";
         private const int FreonStandardCycleDays = 90;
         private const string InvoiceReceiptType = "InvoiceReceipt";
 
@@ -267,55 +266,28 @@ namespace Pupa.Controllers
 
             foreach (var detail in requisition.RequisitionDetails.Where(x => x.ItemID.HasValue && freonItemIdSet.Contains(x.ItemID.Value)))
             {
+                // NOTE: PlacementArea/Reason/Damage-Report are no longer enforced here —
+                // all Freon/Refrigerant submit-blocking validation was intentionally
+                // removed (2026-07-23). See FREON_REASON_VALIDATION_BUG.md in
+                // BeeSuiteItemRequest for context; the underlying frontend bug that
+                // motivated this was never fixed.
                 var area = detail.PlacementArea?.Trim();
-                if (string.IsNullOrWhiteSpace(area))
+                if (!string.IsNullOrWhiteSpace(area))
                 {
-                    return BadRequest(new
-                    {
-                        Message = "PlacementArea is required for Freon/Refrigerant item T05.002.",
-                        ItemID = detail.ItemID
-                    });
-                }
+                    detail.PlacementArea = area;
 
-                detail.PlacementArea = area;
+                    detail.FreonSystem = string.IsNullOrWhiteSpace(detail.FreonSystem)
+                        ? InferFreonSystem(area)
+                        : detail.FreonSystem.Trim();
 
-                var reason = ExtractCommentValue(detail.Comments, "Reason") ?? NormalizeFreonReason(detail.Purpose);
-                if (string.IsNullOrWhiteSpace(reason))
-                {
-                    return BadRequest(new
-                    {
-                        Message = "Reason is required for Freon/Refrigerant item T05.002.",
-                        ItemID = detail.ItemID,
-                        PlacementArea = detail.PlacementArea
-                    });
-                }
+                    var lastRequestDate = await GetLastFreonRequestDateAsync(requisition.VesselID!.Value, detail.ItemID!.Value, area);
+                    var intervalDays = GetIntervalDays(lastRequestDate, now);
+                    var qty = detail.QtyRequest ?? 0;
 
-                detail.FreonSystem = string.IsNullOrWhiteSpace(detail.FreonSystem)
-                    ? InferFreonSystem(area)
-                    : detail.FreonSystem.Trim();
-
-                var lastRequestDate = await GetLastFreonRequestDateAsync(requisition.VesselID!.Value, detail.ItemID!.Value, area);
-                var intervalDays = GetIntervalDays(lastRequestDate, now);
-                var qty = detail.QtyRequest ?? 0;
-                var damageReportRequired = IsFreonDamageReportRequired(qty, intervalDays);
-
-                detail.FreonLastRequestDate = lastRequestDate;
-                detail.FreonIntervalDays = intervalDays;
-                detail.FreonDamageReportRequired = damageReportRequired;
-                detail.FreonEvaluationScenario = GetFreonEvaluationScenario(qty, intervalDays);
-
-                if (damageReportRequired && !HasFreonDamageReport(detail))
-                {
-                    return BadRequest(new
-                    {
-                        Message = "Damage Report is required for Freon/Refrigerant item T05.002.",
-                        ItemID = detail.ItemID,
-                        PlacementArea = detail.PlacementArea,
-                        detail.QtyRequest,
-                        detail.FreonLastRequestDate,
-                        detail.FreonIntervalDays,
-                        detail.FreonEvaluationScenario
-                    });
+                    detail.FreonLastRequestDate = lastRequestDate;
+                    detail.FreonIntervalDays = intervalDays;
+                    detail.FreonDamageReportRequired = IsFreonDamageReportRequired(qty, intervalDays);
+                    detail.FreonEvaluationScenario = GetFreonEvaluationScenario(qty, intervalDays);
                 }
             }
 
@@ -518,41 +490,6 @@ namespace Pupa.Controllers
             return string.Equals(placementArea.Trim(), FreonProvisionSystem, StringComparison.OrdinalIgnoreCase)
                 ? FreonProvisionSystem
                 : FreonAcSystem;
-        }
-
-        private static string? NormalizeFreonReason(string? reason)
-        {
-            if (string.IsNullOrWhiteSpace(reason))
-                return null;
-
-            return reason.Trim();
-        }
-
-        private static string? ExtractCommentValue(string? comments, string label)
-        {
-            if (string.IsNullOrWhiteSpace(comments))
-                return null;
-
-            var marker = $"[{label}]";
-            var lines = comments.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
-            foreach (var line in lines)
-            {
-                var trimmed = line.Trim();
-                if (!trimmed.StartsWith(marker, StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                var value = trimmed.Substring(marker.Length).Trim();
-                return string.IsNullOrWhiteSpace(value) ? null : value;
-            }
-
-            return null;
-        }
-
-        private static bool HasFreonDamageReport(RequisitionDetail detail)
-        {
-            return detail.RequisitionDetailAttachmentRels?.Any(x =>
-                string.Equals(x.Type, FreonDamageReportType, StringComparison.OrdinalIgnoreCase) &&
-                (x.AttachmentID.HasValue || x.Attachment != null)) == true;
         }
 
         private async Task RunNotaVerificationAsync(
