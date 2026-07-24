@@ -569,6 +569,18 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+        private string? _PurposeSummary { get; set; }
+        public virtual string? PurposeSummary
+        {
+            get => _PurposeSummary;
+            set
+            {
+                if (_PurposeSummary == value) return;
+                OnPropertyChanging();
+                _PurposeSummary = value;
+                OnPropertyChanged();
+            }
+        }
 
     }
 }
