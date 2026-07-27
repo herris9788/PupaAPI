@@ -581,6 +581,18 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+        private int? _ROB { get; set; }
+        public virtual int? ROB
+        {
+            get => _ROB;
+            set
+            {
+                if (_ROB == value) return;
+                OnPropertyChanging();
+                _ROB = value;
+                OnPropertyChanged();
+            }
+        }
 
     }
 }
