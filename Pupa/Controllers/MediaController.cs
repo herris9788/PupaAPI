@@ -71,12 +71,23 @@ namespace Pupa.Controllers
                 var success = await _ftpService.UploadFileAsync(stream, fullRemotePath);
                 if (success)
                     return Ok(new { message = "Upload successful", path = fullRemotePath });
-                
+
                 return StatusCode(500, "Upload failed.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                // Surface the real cause: FluentFTP wraps the underlying FTP error
+                // (e.g. data-connection/timeout, 550 permission, bad path) in the
+                // InnerException, so returning only ex.Message hides it.
+                var inner = ex.InnerException;
+                return BadRequest(new
+                {
+                    message = ex.Message,
+                    inner = inner?.Message,
+                    innerType = inner?.GetType().Name,
+                    detail = inner?.InnerException?.Message,
+                    remotePath = remotePath
+                });
             }
         }
 
