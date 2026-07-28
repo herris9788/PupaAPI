@@ -294,5 +294,12 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _entityTypeName;
             private set { _entityTypeName = value; }
         }
+
+        private bool? _approvedFromApp = false;
+        public virtual bool? ApprovedFromApp
+        {
+            get => _approvedFromApp;
+            set { if (_approvedFromApp == value) return; OnPropertyChanging(); _approvedFromApp = value; OnPropertyChanged(); }
+        }
     }
 }
