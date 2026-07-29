@@ -132,6 +132,14 @@ namespace Pupa.BusinessObjects.Beesuite
             set { if (_repairSpecialBehaviour == value) return; OnPropertyChanging(); _repairSpecialBehaviour = value; OnPropertyChanged(); }
         }
 
+        private int? _ItemID { get; set; }
+        [Column("ItemID")]
+        public virtual int? ItemID
+        {
+            get => _ItemID;
+            set { if (_ItemID == value) return; OnPropertyChanging(); _ItemID = value; OnPropertyChanged(); }
+        }
+
         // Navigation property
         [ForeignKey("JobID")]
         public virtual Job? Job { get; set; }
