@@ -301,5 +301,76 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _approvedFromApp;
             set { if (_approvedFromApp == value) return; OnPropertyChanging(); _approvedFromApp = value; OnPropertyChanged(); }
         }
+
+        // ── Revert / Revise (mirrors Requisition) ──
+        // A reverted Job Request goes back to the requester/admin for revision;
+        // RevertStatus = 'REVERTED' while it waits, cleared once revised.
+        private string? _revertStatus;
+        private string? _lastRevertReason;
+        private DateTime? _lastRevertedAt;
+        private string? _lastRevertedBy;
+        private int? _lastRevertedLevel;
+        private bool? _revised = false;
+        private string? _revisedBy;
+        private DateTime? _revisedAt;
+
+        [StringLength(20)]
+        [Column("RevertStatus")]
+        public virtual string? RevertStatus
+        {
+            get => _revertStatus;
+            set { if (_revertStatus == value) return; OnPropertyChanging(); _revertStatus = value; OnPropertyChanged(); }
+        }
+
+        [Column("LastRevertReason")]
+        public virtual string? LastRevertReason
+        {
+            get => _lastRevertReason;
+            set { if (_lastRevertReason == value) return; OnPropertyChanging(); _lastRevertReason = value; OnPropertyChanged(); }
+        }
+
+        [Column("LastRevertedAt")]
+        public virtual DateTime? LastRevertedAt
+        {
+            get => _lastRevertedAt;
+            set { if (_lastRevertedAt == value) return; OnPropertyChanging(); _lastRevertedAt = value; OnPropertyChanged(); }
+        }
+
+        [StringLength(100)]
+        [Column("LastRevertedBy")]
+        public virtual string? LastRevertedBy
+        {
+            get => _lastRevertedBy;
+            set { if (_lastRevertedBy == value) return; OnPropertyChanging(); _lastRevertedBy = value; OnPropertyChanged(); }
+        }
+
+        [Column("LastRevertedLevel")]
+        public virtual int? LastRevertedLevel
+        {
+            get => _lastRevertedLevel;
+            set { if (_lastRevertedLevel == value) return; OnPropertyChanging(); _lastRevertedLevel = value; OnPropertyChanged(); }
+        }
+
+        [Column("Revised")]
+        public virtual bool? Revised
+        {
+            get => _revised;
+            set { if (_revised == value) return; OnPropertyChanging(); _revised = value; OnPropertyChanged(); }
+        }
+
+        [StringLength(100)]
+        [Column("RevisedBy")]
+        public virtual string? RevisedBy
+        {
+            get => _revisedBy;
+            set { if (_revisedBy == value) return; OnPropertyChanging(); _revisedBy = value; OnPropertyChanged(); }
+        }
+
+        [Column("RevisedAt")]
+        public virtual DateTime? RevisedAt
+        {
+            get => _revisedAt;
+            set { if (_revisedAt == value) return; OnPropertyChanging(); _revisedAt = value; OnPropertyChanged(); }
+        }
     }
 }

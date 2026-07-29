@@ -372,5 +372,11 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _BiometricLastUsedAt;
             set { if (_BiometricLastUsedAt == value) return; OnPropertyChanging(); _BiometricLastUsedAt = value; OnPropertyChanged(); }
         }
+        private bool? _WA { get; set; }
+        public virtual bool? WA
+        {
+            get => _WA;
+            set { if (_WA == value) return; OnPropertyChanging(); _WA = value; OnPropertyChanged(); }
+        }
     }
 }
