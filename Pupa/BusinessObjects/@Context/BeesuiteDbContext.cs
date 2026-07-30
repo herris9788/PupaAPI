@@ -64,6 +64,7 @@ namespace Pupa.BusinessObjects
         public DbSet<Job> Job { get; set; }
         public DbSet<JobRequest> JobRequest { get; set; }
         public DbSet<JobDetail> JobDetail { get; set; }
+        public DbSet<JobRequestItem> JobRequestItem { get; set; }
         public DbSet<UserApprovalScope> UserApprovalScope { get; set; }
         public DbSet<LogActivity> LogActivity { get; set; }
         public DbSet<RequisitionEngineNumber> RequisitionEngineNumber { get; set; }

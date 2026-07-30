@@ -148,6 +148,9 @@ namespace Pupa.BusinessObjects.Beesuite
             set { if (_Remarks == value) return; OnPropertyChanging(); _Remarks = value; OnPropertyChanged(); }
         }
 
+        [ForeignKey("ItemID")]
+        public virtual Item? Item { get; set;  }
+
         // Navigation property
         [ForeignKey("JobID")]
         public virtual Job? Job { get; set; }
