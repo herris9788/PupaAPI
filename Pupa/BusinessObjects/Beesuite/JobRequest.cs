@@ -372,5 +372,14 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _revisedAt;
             set { if (_revisedAt == value) return; OnPropertyChanging(); _revisedAt = value; OnPropertyChanged(); }
         }
+
+        private bool? _Approved { get; set; }
+        [Column("Approved")]
+        public virtual bool? Approved
+        {
+            get => _Approved;
+            set { if (_Approved == value) return; OnPropertyChanging(); _Approved = value; OnPropertyChanged(); }
+        }
+
     }
 }
