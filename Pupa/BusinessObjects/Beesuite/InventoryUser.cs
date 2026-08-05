@@ -260,6 +260,13 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _Flag;
             set { OnPropertyChanging(); _Flag = value; OnPropertyChanged(); }
         }
+        private string? _Size { get; set; }
+        [Column("Size")]
+        public virtual string? Size
+        {
+            get => _Size;
+            set { OnPropertyChanging(); _Size = value; OnPropertyChanged(); }
+        }
 
         #endregion
         public virtual ObservableCollection<UserVesselRel>? UserVesselRels { get; set; }
