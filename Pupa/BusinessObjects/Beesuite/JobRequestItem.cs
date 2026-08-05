@@ -5,9 +5,12 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace Pupa.BusinessObjects.Beesuite
 {
     /// <summary>
-    /// Lookup table mapping a Job Request configuration (Group / Category /
-    /// Position / Brand / Type / PK / Service Type) to the inventory item that
-    /// should be used for it (ItemCode / ItemName / ItemID).
+    /// Lookup table mapping a Job Request configuration to the inventory item
+    /// that should be used for it (ItemCode / ItemName / ItemID). Columns are
+    /// shared across job types with different shapes: Electronics uses
+    /// Category / Brand / Type / PK; Underwater Inspection uses JobType /
+    /// Position / Obstacle / VesselClass / QtyAvail. "Group" and "ServiceType"
+    /// apply to both.
     /// </summary>
     [Table("JobRequestItem")]
     public class JobRequestItem : BaseEntity
@@ -25,6 +28,10 @@ namespace Pupa.BusinessObjects.Beesuite
         private int? _itemId;
         private DateTime _createdAt = DateTime.UtcNow;
         private DateTime _updatedAt = DateTime.UtcNow;
+        private string? _jobType;
+        private string? _obstacle;
+        private string? _qtyAvail;
+        private string? _vesselClass;
 
         [Key]
         [Column("ID")]
@@ -126,6 +133,42 @@ namespace Pupa.BusinessObjects.Beesuite
         {
             get => _updatedAt;
             set { if (_updatedAt == value) return; OnPropertyChanging(); _updatedAt = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Underwater Inspection only: e.g. "PENGECEKAN", "PEMBERSIHAN", or the
+        /// root "UNDERWATER INSPECTION (UWILD)" / "(TOCA)" values.</summary>
+        [Column("JobType")]
+        public virtual string? JobType
+        {
+            get => _jobType;
+            set { if (_jobType == value) return; OnPropertyChanging(); _jobType = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Underwater Inspection only: e.g. "TERITIP", "TALI/JARING/TERPAL".</summary>
+        [Column("Obstacle")]
+        public virtual string? Obstacle
+        {
+            get => _obstacle;
+            set { if (_obstacle == value) return; OnPropertyChanging(); _obstacle = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Underwater Inspection only: raw quantity spec — blank (no qty),
+        /// a plain number (fixed), "[1,2]" (a choice), or "&lt;INPUT&gt;" (free entry).
+        /// The client is responsible for parsing this format.</summary>
+        [Column("QtyAvail")]
+        public virtual string? QtyAvail
+        {
+            get => _qtyAvail;
+            set { if (_qtyAvail == value) return; OnPropertyChanging(); _qtyAvail = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Underwater Inspection only: classification society for the
+        /// UWILD/TOCA root rows — "CCS", "ABS", "BKI", "TULIS SENDIRI".</summary>
+        [Column("VesselClass")]
+        public virtual string? VesselClass
+        {
+            get => _vesselClass;
+            set { if (_vesselClass == value) return; OnPropertyChanging(); _vesselClass = value; OnPropertyChanged(); }
         }
     }
 }
