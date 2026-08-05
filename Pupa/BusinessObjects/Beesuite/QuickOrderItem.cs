@@ -120,5 +120,12 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _SupplyPort;
             set { if (_SupplyPort == value) return; OnPropertyChanging(); _SupplyPort = value; OnPropertyChanged(); }
         }
+        private string? _UOM { get; set; }
+        [Column("UOM")]
+        public virtual string? UOM
+        {
+            get => _UOM;
+            set { if (_UOM == value) return; OnPropertyChanging(); _UOM = value; OnPropertyChanged(); }
+        }
     }
 }
