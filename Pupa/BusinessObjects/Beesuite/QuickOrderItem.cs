@@ -106,5 +106,19 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _note;
             set { if (_note == value) return; OnPropertyChanging(); _note = value; OnPropertyChanged(); }
         }
+        private string? _VesselSize { get; set; }
+        [Column("VesselSize")]
+        public virtual string? VesselSize
+        {
+            get => _VesselSize;
+            set { if (_VesselSize == value) return; OnPropertyChanging(); _VesselSize = value; OnPropertyChanged(); }
+        }
+        private string? _SupplyPort { get; set; }
+        [Column("SupplyPort")]
+        public virtual string? SupplyPort
+        {
+            get => _SupplyPort;
+            set { if (_SupplyPort == value) return; OnPropertyChanging(); _SupplyPort = value; OnPropertyChanged(); }
+        }
     }
 }
