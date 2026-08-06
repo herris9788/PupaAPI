@@ -40,7 +40,6 @@ namespace Pupa.BusinessObjects.Beesuite
         private string? _userName;
         [Column("UserName")]
         [Required]
-        [MaxLength(100)]
         public virtual string? UserName
         {
             get => _userName;
@@ -58,7 +57,6 @@ namespace Pupa.BusinessObjects.Beesuite
 
         private string? _vesselName;
         [Column("VesselName")]
-        [MaxLength(255)]
         public virtual string? VesselName
         {
             get => _vesselName;
@@ -67,7 +65,6 @@ namespace Pupa.BusinessObjects.Beesuite
 
         private string? _companyDB;
         [Column("CompanyDB")]
-        [MaxLength(20)]
         public virtual string? CompanyDB
         {
             get => _companyDB;
@@ -77,7 +74,6 @@ namespace Pupa.BusinessObjects.Beesuite
         // ── Scope captured when the item was added ────────────────────────────
         private string? _department;
         [Column("Department")]
-        [MaxLength(10)]
         public virtual string? Department
         {
             get => _department;
@@ -86,7 +82,6 @@ namespace Pupa.BusinessObjects.Beesuite
 
         private string? _subDepartment;
         [Column("SubDepartment")]
-        [MaxLength(50)]
         public virtual string? SubDepartment
         {
             get => _subDepartment;
@@ -104,7 +99,6 @@ namespace Pupa.BusinessObjects.Beesuite
 
         private string? _categoryName;
         [Column("CategoryName")]
-        [MaxLength(255)]
         public virtual string? CategoryName
         {
             get => _categoryName;
@@ -165,7 +159,6 @@ namespace Pupa.BusinessObjects.Beesuite
 
         private string? _uomName;
         [Column("UOMName")]
-        [MaxLength(50)]
         public virtual string? UOMName
         {
             get => _uomName;
@@ -174,7 +167,6 @@ namespace Pupa.BusinessObjects.Beesuite
 
         private string? _remarks;
         [Column("Remarks")]
-        [MaxLength(1000)]
         public virtual string? Remarks
         {
             get => _remarks;
@@ -184,7 +176,6 @@ namespace Pupa.BusinessObjects.Beesuite
         /// <summary>COA — usually empty until approval.</summary>
         private string? _purpose;
         [Column("Purpose")]
-        [MaxLength(255)]
         public virtual string? Purpose
         {
             get => _purpose;
@@ -194,7 +185,6 @@ namespace Pupa.BusinessObjects.Beesuite
         /// <summary>Wizard purpose (Overhaul / Damage-Trouble / ...).</summary>
         private string? _purposeOfRequest;
         [Column("PurposeOfRequest")]
-        [MaxLength(255)]
         public virtual string? PurposeOfRequest
         {
             get => _purposeOfRequest;
@@ -203,7 +193,6 @@ namespace Pupa.BusinessObjects.Beesuite
 
         private string? _prDocuments;
         [Column("PRDocuments")]
-        [MaxLength(500)]
         public virtual string? PRDocuments
         {
             get => _prDocuments;
@@ -212,7 +201,6 @@ namespace Pupa.BusinessObjects.Beesuite
 
         private string? _partBookAttachmentPath;
         [Column("PartBookAttachmentPath")]
-        [MaxLength(500)]
         public virtual string? PartBookAttachmentPath
         {
             get => _partBookAttachmentPath;
@@ -221,7 +209,6 @@ namespace Pupa.BusinessObjects.Beesuite
 
         private string? _requiredEdition;
         [Column("RequiredEdition")]
-        [MaxLength(100)]
         public virtual string? RequiredEdition
         {
             get => _requiredEdition;
@@ -272,7 +259,6 @@ namespace Pupa.BusinessObjects.Beesuite
 
         private string? _createdBy;
         [Column("CreatedBy")]
-        [MaxLength(100)]
         public virtual string? CreatedBy
         {
             get => _createdBy;
@@ -289,7 +275,6 @@ namespace Pupa.BusinessObjects.Beesuite
 
         private string? _updatedBy;
         [Column("UpdatedBy")]
-        [MaxLength(100)]
         public virtual string? UpdatedBy
         {
             get => _updatedBy;
