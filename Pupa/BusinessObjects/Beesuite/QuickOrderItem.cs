@@ -98,6 +98,13 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _maxQty;
             set { if (_maxQty == value) return; OnPropertyChanging(); _maxQty = value; OnPropertyChanged(); }
         }
+        private decimal? _FixedQty { get; set; }
+        [Column("FixedQty", TypeName = "numeric(18,2)")]
+        public virtual decimal? FixedQty
+        {
+            get => _FixedQty;
+            set { if (_FixedQty == value) return; OnPropertyChanging(); _FixedQty = value; OnPropertyChanged(); }
+        }
 
         [StringLength(1000)]
         [Column("Note")]
