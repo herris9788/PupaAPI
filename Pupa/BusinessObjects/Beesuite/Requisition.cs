@@ -263,7 +263,7 @@ namespace Pupa.BusinessObjects.Beesuite
         }
 
         private string? _approvedBy8ActualBy { get; set; }
-        public virtual string? ApprovedBy8ActualBys
+        public virtual string? ApprovedBy8ActualBy
         {
             get => _approvedBy8ActualBy;
             set { if (_approvedBy8ActualBy == value) return; OnPropertyChanging(); _approvedBy8ActualBy = value; OnPropertyChanged(); }
