@@ -16,7 +16,7 @@ namespace Pupa.BusinessObjects
             IConfigurationRoot configuration = new ConfigurationBuilder()
                .SetBasePath(Directory.GetCurrentDirectory())
                .AddJsonFile("appsettings.json")
-               .Build();
+               .Build(); 
             var conn = configuration.GetConnectionString("Beesuite");
             var optionsBuilder = new DbContextOptionsBuilder<BeesuiteDbContext>();
             optionsBuilder.UseNpgsql(conn);

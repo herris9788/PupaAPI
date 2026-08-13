@@ -262,6 +262,38 @@ namespace Pupa.BusinessObjects.Beesuite
             set { if (_approvedBy7ActualBy == value) return; OnPropertyChanging(); _approvedBy7ActualBy = value; OnPropertyChanged(); }
         }
 
+        private string? _approvedBy8ActualBy { get; set; }
+        public virtual string? ApprovedBy8ActualBys
+        {
+            get => _approvedBy8ActualBy;
+            set { if (_approvedBy8ActualBy == value) return; OnPropertyChanging(); _approvedBy8ActualBy = value; OnPropertyChanged(); }
+        }
+
+        private string? _approvedBy8 { get; set; }
+        public virtual string? ApprovedBy8
+        {
+            get => _approvedBy8;
+            set
+            {
+                if (_approvedBy8 == value) return;
+                OnPropertyChanging();
+                _approvedBy8 = value;
+                OnPropertyChanged();
+            }
+        }
+        private DateTime? _ApprovedBy8At { get; set; }
+        public virtual DateTime? ApprovedBy8At
+        {
+            get => _ApprovedBy8At;
+            set
+            {
+                if (_ApprovedBy8At == value) return;
+                OnPropertyChanging();
+                _ApprovedBy8At = value;
+                OnPropertyChanged();
+            }
+        }
+
         private bool? _Received { get; set; }
         public virtual bool? Received
         {
