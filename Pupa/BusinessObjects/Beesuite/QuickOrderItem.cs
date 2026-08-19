@@ -134,5 +134,12 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _UOM;
             set { if (_UOM == value) return; OnPropertyChanging(); _UOM = value; OnPropertyChanged(); }
         }
+        private string? _ForVesel { get; set; }
+        [Column("ForVessel")]
+        public virtual string? ForVessel
+        {
+            get => _ForVesel;
+            set { if (_ForVesel == value) return; OnPropertyChanging(); _ForVesel = value; OnPropertyChanged(); }
+        }
     }
 }
