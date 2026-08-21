@@ -191,5 +191,12 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _Action;
             set { if (_Action == value) return; OnPropertyChanging(); _Action = value; OnPropertyChanged(); }
         }
+        private string? _Specification { get; set; }
+        [Column("Specification")]
+        public virtual string? Specification
+        {
+            get => _Specification;
+            set { if (_Specification == value) return; OnPropertyChanging(); _Specification = value; OnPropertyChanged(); }
+        }
     }
 }
