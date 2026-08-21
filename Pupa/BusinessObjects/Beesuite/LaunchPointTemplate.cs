@@ -115,5 +115,12 @@ namespace Pupa.BusinessObjects.Beesuite
 
         /// <summary>Navigation ke child nodes</summary>
         public virtual ObservableCollection<LaunchPointTemplate> Children { get; set; }
+        private bool _IsLogistic { get; set; } = false;
+        [Column("IsLogistic")]
+        public virtual bool IsLogistic
+        {
+            get => _IsLogistic;
+            set { OnPropertyChanging(); _IsLogistic = value; OnPropertyChanged(); }
+        }
     }
 }

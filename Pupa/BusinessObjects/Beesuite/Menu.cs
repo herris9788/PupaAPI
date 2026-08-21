@@ -79,5 +79,12 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _isActive;
             set { OnPropertyChanging(); _isActive = value; OnPropertyChanged(); }
         }
+        private bool _IsLogistic { get; set; } = false;
+        [Column("IsLogistic")]
+        public virtual bool IsLogistic
+        {
+            get => _IsLogistic;
+            set { OnPropertyChanging(); _IsLogistic = value; OnPropertyChanged(); }
+        }
     }
 }
