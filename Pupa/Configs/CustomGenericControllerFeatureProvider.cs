@@ -48,6 +48,7 @@ namespace Pupa.Configs
             typeof(JobFieldDefinition),
             typeof(JobFieldValue),
             typeof(UserApprovalScope),
+            typeof(UserApprovalScope2),
             typeof(LogActivity),
             typeof(RequisitionEngineNumber),
             typeof(RequisitionCylinderNumber),
