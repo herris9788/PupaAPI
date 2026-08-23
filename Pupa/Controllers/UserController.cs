@@ -86,12 +86,19 @@ namespace Pupa.Controllers
 
                 // v2 match: every dimension is a wildcard when NULL. When the
                 // document has a Group (Item Request V2 combined submission),
-                // only "pure" Group-level rows (no Category/Family scoping) are
-                // eligible — rows that scope a Category/Family are membership
-                // metadata only (used client-side to bundle items into a Group)
-                // and must never win an approval slot. Otherwise Group is
-                // ignored, exactly as before — it has no bearing on routing for
-                // a normal (non-combined) document.
+                // ANY row carrying that Group label is eligible to be the
+                // approver — the same row an admin uses to declare "this
+                // Category/Family belongs to Group X at Level N, approved by
+                // Y" doubles as both the membership declaration AND the real
+                // approval-chain entry (confirmed against real usage: admins
+                // don't create a separate parallel set of "pure" Group rows).
+                // Category/Family on the row are simply ignored in this mode
+                // — they were never meant to further restrict who approves
+                // the combined document, only to (elsewhere, client-side)
+                // determine which items belong to the Group in the first
+                // place. Otherwise Group is ignored, exactly as before — it
+                // has no bearing on routing for a normal (non-combined)
+                // document.
                 bool MatchesV2(UserApprovalScope2 s, InventoryUser Vsl, int? CatId, int? FamId, int Lvl, string? Grp)
                 {
                     if (s.IsActive == false) return false;
@@ -104,9 +111,7 @@ namespace Pupa.Controllers
 
                     if (!string.IsNullOrEmpty(Grp))
                     {
-                        if (s.Group != Grp) return false;
-                        if (s.StockCategoryID != null || s.StockFamilyID != null) return false;
-                        return true;
+                        return s.Group == Grp;
                     }
 
                     if (s.StockCategoryID != null && s.StockCategoryID != CatId) return false;
@@ -432,14 +437,13 @@ namespace Pupa.Controllers
                         if (s.SubDepartment != null && s.SubDepartment != Query.SubDepartment) return false;
 
                         // Item Request V2 combined submission: resolve the Group's
-                        // own combined chain (pure Group-level rows only — rows
-                        // scoped to a Category/Family are membership metadata, not
-                        // eligible approvers for the combined chain).
+                        // own combined chain. Any row carrying this Group label is
+                        // eligible — Category/Family on the row are ignored here
+                        // (they only matter for client-side Group-membership
+                        // derivation, not for who approves the combined document).
                         if (!string.IsNullOrEmpty(Query.Group))
                         {
-                            if (s.Group != Query.Group) return false;
-                            if (s.StockCategoryID != null || s.StockFamilyID != null) return false;
-                            return true;
+                            return s.Group == Query.Group;
                         }
 
                         if (s.StockCategoryID != null && s.StockCategoryID != FamilyStockCategoryID) return false;
@@ -703,9 +707,9 @@ namespace Pupa.Controllers
 
                 // v2 match: every dimension is a wildcard when NULL. When the
                 // requisition has a Group (Item Request V2 combined submission),
-                // only "pure" Group-level rows (no Category/Family scoping) are
-                // eligible — see the identical branch in CheckApprover/
-                // ResolveApprovers above for the full rationale.
+                // any row carrying that Group label is eligible — see the
+                // identical branch in CheckApprover/ResolveApprovers above for
+                // the full rationale.
                 bool MatchesV2(UserApprovalScope2 s, Requisition Req, InventoryUser Vsl, int? CatId, int? FamId, int Lvl)
                 {
                     if (s.IsActive == false) return false;
@@ -718,9 +722,7 @@ namespace Pupa.Controllers
 
                     if (!string.IsNullOrEmpty(Req.Group))
                     {
-                        if (s.Group != Req.Group) return false;
-                        if (s.StockCategoryID != null || s.StockFamilyID != null) return false;
-                        return true;
+                        return s.Group == Req.Group;
                     }
 
                     if (s.StockCategoryID != null && s.StockCategoryID != CatId) return false;
