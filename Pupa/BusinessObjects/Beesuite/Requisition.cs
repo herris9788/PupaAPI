@@ -542,6 +542,24 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+        /// <summary>Snapshot of the vessel's ApprovalRuleVersion at the moment this
+        /// document was created (BeesuiteDbContext.SaveChanges fills it in when a
+        /// client doesn't set it) — 1 = the old UserApprovalScope cascade, 2 = the
+        /// newer Specificity-based UserApprovalScope2. Locked per-document on
+        /// purpose: changing a vessel's flag later must not retroactively change
+        /// how an already-submitted requisition gets routed.</summary>
+        private int? _ApprovalRuleVersion { get; set; }
+        public virtual int? ApprovalRuleVersion
+        {
+            get => _ApprovalRuleVersion;
+            set
+            {
+                if (_ApprovalRuleVersion == value) return;
+                OnPropertyChanging();
+                _ApprovalRuleVersion = value;
+                OnPropertyChanged();
+            }
+        }
         private DateTime? _ApprovedBy1At { get; set; }
         public virtual DateTime? ApprovedBy1At
         {

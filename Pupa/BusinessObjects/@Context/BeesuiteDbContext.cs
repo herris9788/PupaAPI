@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Metadata;
 using BeeSuite.WebApi.BusinessObjects.Beesuite;
+using System.Linq;
 
 namespace Pupa.BusinessObjects
 {
@@ -270,13 +271,42 @@ namespace Pupa.BusinessObjects
         public override int SaveChanges(bool acceptAllChangesOnSuccess)
         {
             ApplyAuditTimestamps();
+            ApplyRequisitionApprovalRuleVersion();
             return base.SaveChanges(acceptAllChangesOnSuccess);
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             ApplyAuditTimestamps();
+            ApplyRequisitionApprovalRuleVersion();
             return base.SaveChangesAsync(cancellationToken);
+        }
+
+        // Snapshot the vessel's CURRENT ApprovalRuleVersion onto a new Requisition
+        // at creation time, so approval routing for that document stays locked to
+        // whichever rule engine was active when it was submitted — even if the
+        // vessel's own flag changes later. Defaults to 1 (the old cascade) when
+        // the vessel has no flag of its own; never overwrites a value the client
+        // already provided explicitly.
+        private void ApplyRequisitionApprovalRuleVersion()
+        {
+            foreach (var entry in ChangeTracker.Entries<Requisition>())
+            {
+                if (entry.State != EntityState.Added) continue;
+                // Fully qualified: the DbSet<Requisition> property named "Requisition"
+                // on this class shadows the entity type name in simple-name lookup.
+                var versionProp = entry.Property(nameof(Pupa.BusinessObjects.Beesuite.Requisition.ApprovalRuleVersion));
+                if (versionProp.CurrentValue != null) continue;
+
+                var vesselId = entry.Entity.VesselID;
+                int? vesselVersion = vesselId.HasValue
+                    ? Set<InventoryUser>().AsNoTracking()
+                        .Where(v => v.ID == vesselId.Value)
+                        .Select(v => (int?)v.ApprovalRuleVersion)
+                        .FirstOrDefault()
+                    : null;
+                versionProp.CurrentValue = vesselVersion ?? 1;
+            }
         }
 
         // Auto-fill CreatedAt/UpdatedAt audit columns so NOT NULL constraints are

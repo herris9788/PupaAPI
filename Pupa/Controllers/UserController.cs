@@ -57,10 +57,11 @@ namespace Pupa.Controllers
                     .Where(x => x.VesselGroupID == VesselGroupId)
                     .ToListAsync();
 
-                // Vessel opted into the newer Specificity-based scope table — only
-                // loaded when actually needed (v1 stays untouched otherwise).
+                // This document's OWN snapshot decides the rule engine — not the
+                // vessel's current flag, which may have changed since submission.
+                // Only loaded when actually needed (v1 stays untouched otherwise).
                 List<UserApprovalScope2> ScopesV2 = new();
-                if (Vessel.ApprovalRuleVersion == 2)
+                if (Requisition.ApprovalRuleVersion == 2)
                 {
                     ScopesV2 = await db.UserApprovalScope2.AsNoTracking()
                         .Include(x => x.User)
@@ -118,7 +119,7 @@ namespace Pupa.Controllers
                     string? ResolvedUsername = null;
                     object? MatchedSummary = null;
 
-                    if (Vessel.ApprovalRuleVersion == 2)
+                    if (Requisition.ApprovalRuleVersion == 2)
                     {
                         var ResolvedV2 = ResolveScopeV2(Vessel, FamilyStockCategoryID, FamilyFamilyID, Level);
                         ResolvedUserId = ResolvedV2?.UserID;
@@ -454,10 +455,12 @@ namespace Pupa.Controllers
                     .Where(x => RelevantVesselGroupIDs.Contains(x.VesselGroupID.Value))
                     .ToListAsync();
 
-                // Only loaded when at least one relevant vessel actually opted into v2 —
-                // v1-only requests don't pay for the extra query.
+                // Each document's OWN snapshot decides the rule engine — not the
+                // vessel's current flag. Only loaded when at least one relevant
+                // requisition actually opted into v2 (v1-only requests don't pay
+                // for the extra query).
                 List<UserApprovalScope2> ScopesV2 = new();
-                if (Vessels.Any(x => x.ApprovalRuleVersion == 2))
+                if (Requisitions.Any(r => r.ApprovalRuleVersion == 2))
                 {
                     ScopesV2 = await db.UserApprovalScope2.AsNoTracking()
                         .Include(x => x.User)
@@ -549,7 +552,7 @@ namespace Pupa.Controllers
                 // C# types.
                 (int? UserId, object? Matched) ResolveApprover(Requisition Requisition, InventoryUser Vessel, int Level)
                 {
-                    if (Vessel.ApprovalRuleVersion == 2)
+                    if (Requisition.ApprovalRuleVersion == 2)
                     {
                         var Family = FamilyMap.FirstOrDefault(x => x.FamilyID == Requisition.CategoryID);
                         var ResolvedV2 = ScopesV2
