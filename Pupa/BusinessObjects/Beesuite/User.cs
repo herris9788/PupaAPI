@@ -126,6 +126,18 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+        private DateTime? _CreatedAt { get; set; }
+        public virtual DateTime? CreatedAt
+        {
+            get => _CreatedAt;
+            set
+            {
+                if (_CreatedAt == value) return;
+                OnPropertyChanging();
+                _CreatedAt = value;
+                OnPropertyChanged();
+            }
+        }
         public virtual string? Position
         {
             get => _position;
