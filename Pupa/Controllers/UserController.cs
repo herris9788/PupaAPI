@@ -127,6 +127,24 @@ namespace Pupa.Controllers
                         .FirstOrDefault();
                 }
 
+                // Group-combined documents: admins number a Group's approval rows
+                // however makes sense to them (e.g. only Level 2, no Level 1) — the
+                // DB Level value is NOT a required-contiguous-from-1 position, it's
+                // just a tie-breaker/ordering key. Resolve the full chain ONCE by
+                // scanning every possible Level and compacting (skipping gaps),
+                // exactly like ResolveApprovers already does at submit time, then
+                // index into it POSITIONALLY below instead of re-querying by a
+                // literal Level number that may not exist in the matrix at all.
+                List<UserApprovalScope2> GroupChain = new();
+                if (Requisition.ApprovalRuleVersion == 2 && !string.IsNullOrEmpty(Requisition.Group))
+                {
+                    for (int lvl = 1; lvl <= 7; lvl++)
+                    {
+                        var r = ResolveScopeV2(Vessel, null, null, lvl, Requisition.Group);
+                        if (r != null) GroupChain.Add(r);
+                    }
+                }
+
                 var ApprovalMatrix = new List<object>();
                 var ApproverCount = Requisition.ApprovalMaxLevel;
 
@@ -139,7 +157,9 @@ namespace Pupa.Controllers
 
                     if (Requisition.ApprovalRuleVersion == 2)
                     {
-                        var ResolvedV2 = ResolveScopeV2(Vessel, FamilyStockCategoryID, FamilyFamilyID, Level, Requisition.Group);
+                        var ResolvedV2 = !string.IsNullOrEmpty(Requisition.Group)
+                            ? GroupChain.ElementAtOrDefault(i)
+                            : ResolveScopeV2(Vessel, FamilyStockCategoryID, FamilyFamilyID, Level, Requisition.Group);
                         ResolvedUserId = ResolvedV2?.UserID;
                         ResolvedUsername = ResolvedV2?.User?.Username;
                         MatchedSummary = ResolvedV2 == null ? null : new
@@ -730,6 +750,26 @@ namespace Pupa.Controllers
                     return true;
                 }
 
+                // Group-combined documents: same rationale as CheckApprover above —
+                // a Group's DB Level values aren't required to be contiguous from 1,
+                // so [Level] here means "the Nth resolved approver" (position),
+                // resolved by scanning+compacting every possible Level, not "the row
+                // whose own Level field equals [Level]".
+                List<UserApprovalScope2> ResolveGroupChain(Requisition Requisition, InventoryUser Vessel)
+                {
+                    var chain = new List<UserApprovalScope2>();
+                    for (int lvl = 1; lvl <= 7; lvl++)
+                    {
+                        var r = ScopesV2
+                            .Where(s => MatchesV2(s, Requisition, Vessel, null, null, lvl))
+                            .OrderByDescending(s => s.Specificity)
+                            .ThenBy(s => s.ID)
+                            .FirstOrDefault();
+                        if (r != null) chain.Add(r);
+                    }
+                    return chain;
+                }
+
                 // Unified resolver: picks the v1 cascade or the v2 Specificity-based match
                 // depending on the vessel's ApprovalRuleVersion flag, normalized to a plain
                 // (UserID, display summary) pair since the two source tables are different
@@ -739,11 +779,13 @@ namespace Pupa.Controllers
                     if (Requisition.ApprovalRuleVersion == 2)
                     {
                         var Family = FamilyMap.FirstOrDefault(x => x.FamilyID == Requisition.CategoryID);
-                        var ResolvedV2 = ScopesV2
-                            .Where(s => MatchesV2(s, Requisition, Vessel, Family?.StockCategoryID, Family?.FamilyID, Level))
-                            .OrderByDescending(s => s.Specificity)
-                            .ThenBy(s => s.ID)
-                            .FirstOrDefault();
+                        var ResolvedV2 = !string.IsNullOrEmpty(Requisition.Group)
+                            ? ResolveGroupChain(Requisition, Vessel).ElementAtOrDefault(Level - 1)
+                            : ScopesV2
+                                .Where(s => MatchesV2(s, Requisition, Vessel, Family?.StockCategoryID, Family?.FamilyID, Level))
+                                .OrderByDescending(s => s.Specificity)
+                                .ThenBy(s => s.ID)
+                                .FirstOrDefault();
 
                         object? MatchedV2 = ResolvedV2 == null ? null : new
                         {
