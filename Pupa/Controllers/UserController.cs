@@ -821,10 +821,13 @@ namespace Pupa.Controllers
                         }
 
                         // 2) Flow khusus ADMIN — level yang sudah di-approve oleh user ber-Role ADMIN
+                        // dimunculkan lagi untuk ADMIN LAIN (oversight), tapi TIDAK untuk admin yang
+                        // approve-nya sendiri — dia sudah tahu, jangan tampil balik ke pending-nya dia.
                         if (IsAdminUser && AdminApprovedLevels.Any())
                         {
                             foreach (var (Level, ApprovedByName) in AdminApprovedLevels)
                             {
+                                if (ApprovedByName.ToLower() == UserNameLower) continue;
                                 var Resolved = ResolveApprover(Requisition, Vessel, Level);
                                 PendingList.Add(BuildItem(Requisition, Vessel, Level, Resolved.Matched, IsAdminOverride: true, ApprovedByName));
                                 AddedThisRequisition = true;
