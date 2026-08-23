@@ -25,7 +25,7 @@ namespace Pupa.BusinessObjects.Beesuite
         private int _ID;
         private int? _UserID;
         private string? _CompanyDB;
-        private int? _StockGroupID;
+        private string? _Group;
         private int? _StockCategoryID;
         private int? _StockFamilyID;
         private int? _VesselID;
@@ -64,16 +64,13 @@ namespace Pupa.BusinessObjects.Beesuite
             set { if (_CompanyDB == value) return; OnPropertyChanging(); _CompanyDB = value; OnPropertyChanged(); }
         }
 
-        /// <summary>
-        /// Level teratas hierarki stock (Group &gt; Category &gt; Family). Belum ada
-        /// tabel master Group di database saat ini, jadi disimpan sebagai ID polos
-        /// tanpa FK/navigation property — tinggal tambahkan FK kalau tabelnya sudah ada.
-        /// </summary>
-        [Column("StockGroupID")]
-        public virtual int? StockGroupID
+        /// <summary>Level teratas hierarki stock (Group &gt; Category &gt; Family), disimpan sebagai nama/kode bebas. NULL = berlaku di semua Group.</summary>
+        [Column("Group")]
+        [MaxLength(50)]
+        public virtual string? Group
         {
-            get => _StockGroupID;
-            set { if (_StockGroupID == value) return; OnPropertyChanging(); _StockGroupID = value; OnPropertyChanged(); }
+            get => _Group;
+            set { if (_Group == value) return; OnPropertyChanging(); _Group = value; OnPropertyChanged(); }
         }
 
         [Column("StockCategoryID")]
@@ -177,7 +174,7 @@ namespace Pupa.BusinessObjects.Beesuite
         [NotMapped]
         public virtual int Specificity =>
             (CompanyDB != null ? 1 : 0) +
-            (StockGroupID != null ? 1 : 0) +
+            (Group != null ? 1 : 0) +
             (StockCategoryID != null ? 1 : 0) +
             (StockFamilyID != null ? 1 : 0) +
             (VesselID != null ? 1 : 0) +

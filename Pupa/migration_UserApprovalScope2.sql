@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS "UserApprovalScope2" (
     "ID"              serial                   PRIMARY KEY,
     "UserID"          integer                  NOT NULL,  -- approver untuk scope ini
     "CompanyDB"       varchar(20)              NULL,      -- NULL = semua DB
-    "StockGroupID"    integer                  NULL,      -- NULL = semua Group (belum ada tabel master Group)
+    "Group"           varchar(50)              NULL,      -- NULL = semua Group
     "StockCategoryID" integer                  NULL,      -- NULL = semua Category
     "StockFamilyID"   integer                  NULL,      -- NULL = semua Family
     "VesselID"        integer                  NULL,      -- NULL = semua Vessel dalam VesselGroup
