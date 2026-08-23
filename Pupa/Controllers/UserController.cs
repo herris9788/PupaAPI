@@ -84,26 +84,39 @@ namespace Pupa.Controllers
                     };
                 }
 
-                // v2 match: every dimension is a wildcard when NULL. "Group" (free-text
-                // label) is intentionally NOT checked — it has no corresponding field on
-                // Requisition to match against, it's organizational metadata only.
-                bool MatchesV2(UserApprovalScope2 s, InventoryUser Vsl, int? CatId, int? FamId, int Lvl)
+                // v2 match: every dimension is a wildcard when NULL. When the
+                // document has a Group (Item Request V2 combined submission),
+                // only "pure" Group-level rows (no Category/Family scoping) are
+                // eligible — rows that scope a Category/Family are membership
+                // metadata only (used client-side to bundle items into a Group)
+                // and must never win an approval slot. Otherwise Group is
+                // ignored, exactly as before — it has no bearing on routing for
+                // a normal (non-combined) document.
+                bool MatchesV2(UserApprovalScope2 s, InventoryUser Vsl, int? CatId, int? FamId, int Lvl, string? Grp)
                 {
                     if (s.IsActive == false) return false;
                     if (s.Level != null && s.Level != Lvl) return false;
                     if (s.VesselID != null && s.VesselID != Vsl.ID) return false;
                     if (s.VesselGroupID != null && s.VesselGroupID != Vsl.Group?.ID) return false;
                     if (s.CompanyDB != null && s.CompanyDB != Vsl.DB) return false;
-                    if (s.StockCategoryID != null && s.StockCategoryID != CatId) return false;
-                    if (s.StockFamilyID != null && s.StockFamilyID != FamId) return false;
                     if (s.Department != null && s.Department != Requisition.Department) return false;
                     if (s.SubDepartment != null && s.SubDepartment != Requisition.SubDepartment) return false;
+
+                    if (!string.IsNullOrEmpty(Grp))
+                    {
+                        if (s.Group != Grp) return false;
+                        if (s.StockCategoryID != null || s.StockFamilyID != null) return false;
+                        return true;
+                    }
+
+                    if (s.StockCategoryID != null && s.StockCategoryID != CatId) return false;
+                    if (s.StockFamilyID != null && s.StockFamilyID != FamId) return false;
                     return true;
                 }
 
-                UserApprovalScope2? ResolveScopeV2(InventoryUser Vsl, int? CatId, int? FamId, int Lvl)
+                UserApprovalScope2? ResolveScopeV2(InventoryUser Vsl, int? CatId, int? FamId, int Lvl, string? Grp)
                 {
-                    return ScopesV2.Where(s => MatchesV2(s, Vsl, CatId, FamId, Lvl))
+                    return ScopesV2.Where(s => MatchesV2(s, Vsl, CatId, FamId, Lvl, Grp))
                         .OrderByDescending(s => s.Specificity)
                         .ThenBy(s => s.ID)
                         .FirstOrDefault();
@@ -121,7 +134,7 @@ namespace Pupa.Controllers
 
                     if (Requisition.ApprovalRuleVersion == 2)
                     {
-                        var ResolvedV2 = ResolveScopeV2(Vessel, FamilyStockCategoryID, FamilyFamilyID, Level);
+                        var ResolvedV2 = ResolveScopeV2(Vessel, FamilyStockCategoryID, FamilyFamilyID, Level, Requisition.Group);
                         ResolvedUserId = ResolvedV2?.UserID;
                         ResolvedUsername = ResolvedV2?.User?.Username;
                         MatchedSummary = ResolvedV2 == null ? null : new
@@ -415,10 +428,22 @@ namespace Pupa.Controllers
                         if (s.VesselID != null && s.VesselID != Vessel.ID) return false;
                         if (s.VesselGroupID != null && s.VesselGroupID != Vessel.Group?.ID) return false;
                         if (s.CompanyDB != null && s.CompanyDB != Vessel.DB) return false;
-                        if (s.StockCategoryID != null && s.StockCategoryID != FamilyStockCategoryID) return false;
-                        if (s.StockFamilyID != null && s.StockFamilyID != FamilyFamilyID) return false;
                         if (s.Department != null && s.Department != Query.Department) return false;
                         if (s.SubDepartment != null && s.SubDepartment != Query.SubDepartment) return false;
+
+                        // Item Request V2 combined submission: resolve the Group's
+                        // own combined chain (pure Group-level rows only — rows
+                        // scoped to a Category/Family are membership metadata, not
+                        // eligible approvers for the combined chain).
+                        if (!string.IsNullOrEmpty(Query.Group))
+                        {
+                            if (s.Group != Query.Group) return false;
+                            if (s.StockCategoryID != null || s.StockFamilyID != null) return false;
+                            return true;
+                        }
+
+                        if (s.StockCategoryID != null && s.StockCategoryID != FamilyStockCategoryID) return false;
+                        if (s.StockFamilyID != null && s.StockFamilyID != FamilyFamilyID) return false;
                         return true;
                     }
 
@@ -676,9 +701,11 @@ namespace Pupa.Controllers
                     return Resolved;
                 }
 
-                // v2 match: every dimension is a wildcard when NULL. "Group" (free-text
-                // label) is intentionally NOT checked — it has no corresponding field on
-                // Requisition to match against, it's organizational metadata only.
+                // v2 match: every dimension is a wildcard when NULL. When the
+                // requisition has a Group (Item Request V2 combined submission),
+                // only "pure" Group-level rows (no Category/Family scoping) are
+                // eligible — see the identical branch in CheckApprover/
+                // ResolveApprovers above for the full rationale.
                 bool MatchesV2(UserApprovalScope2 s, Requisition Req, InventoryUser Vsl, int? CatId, int? FamId, int Lvl)
                 {
                     if (s.IsActive == false) return false;
@@ -686,10 +713,18 @@ namespace Pupa.Controllers
                     if (s.VesselID != null && s.VesselID != Vsl.ID) return false;
                     if (s.VesselGroupID != null && s.VesselGroupID != Vsl.Group?.ID) return false;
                     if (s.CompanyDB != null && s.CompanyDB != Vsl.DB) return false;
-                    if (s.StockCategoryID != null && s.StockCategoryID != CatId) return false;
-                    if (s.StockFamilyID != null && s.StockFamilyID != FamId) return false;
                     if (s.Department != null && s.Department != Req.Department) return false;
                     if (s.SubDepartment != null && s.SubDepartment != Req.SubDepartment) return false;
+
+                    if (!string.IsNullOrEmpty(Req.Group))
+                    {
+                        if (s.Group != Req.Group) return false;
+                        if (s.StockCategoryID != null || s.StockFamilyID != null) return false;
+                        return true;
+                    }
+
+                    if (s.StockCategoryID != null && s.StockCategoryID != CatId) return false;
+                    if (s.StockFamilyID != null && s.StockFamilyID != FamId) return false;
                     return true;
                 }
 

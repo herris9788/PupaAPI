@@ -426,6 +426,27 @@ namespace Pupa.BusinessObjects.Beesuite
             }
         }
 
+        private string? _Group { get; set; }
+        /// <summary>Free-text Group label this requisition was routed under (Item
+        /// Request V2 combined submission), snapshot at creation time from the
+        /// client-resolved UserApprovalScope2 Group membership. NULL = a normal
+        /// single-Family document (CategoryID is set as usual); non-null = a
+        /// Group-combined document spanning multiple Families/Categories, whose
+        /// approval chain is resolved by Group instead (see
+        /// UserController.MatchesV2) — CategoryID is left NULL in that case.</summary>
+        [StringLength(50)]
+        public virtual string? Group
+        {
+            get => _Group;
+            set
+            {
+                if (_Group == value) return;
+                OnPropertyChanging();
+                _Group = value;
+                OnPropertyChanged();
+            }
+        }
+
 
         public virtual DateTime? CreatedAt
         {
