@@ -57,6 +57,17 @@ namespace Pupa.Controllers
                     .Where(x => x.VesselGroupID == VesselGroupId)
                     .ToListAsync();
 
+                // Vessel opted into the newer Specificity-based scope table — only
+                // loaded when actually needed (v1 stays untouched otherwise).
+                List<UserApprovalScope2> ScopesV2 = new();
+                if (Vessel.ApprovalRuleVersion == 2)
+                {
+                    ScopesV2 = await db.UserApprovalScope2.AsNoTracking()
+                        .Include(x => x.User)
+                        .Where(x => x.IsActive != false)
+                        .ToListAsync();
+                }
+
                 string? GetActualApproverName(int level)
                 {
                     return level switch
@@ -72,12 +83,61 @@ namespace Pupa.Controllers
                     };
                 }
 
+                // v2 match: every dimension is a wildcard when NULL. "Group" (free-text
+                // label) is intentionally NOT checked — it has no corresponding field on
+                // Requisition to match against, it's organizational metadata only.
+                bool MatchesV2(UserApprovalScope2 s, InventoryUser Vsl, int? CatId, int? FamId, int Lvl)
+                {
+                    if (s.IsActive == false) return false;
+                    if (s.Level != null && s.Level != Lvl) return false;
+                    if (s.VesselID != null && s.VesselID != Vsl.ID) return false;
+                    if (s.VesselGroupID != null && s.VesselGroupID != Vsl.Group?.ID) return false;
+                    if (s.CompanyDB != null && s.CompanyDB != Vsl.DB) return false;
+                    if (s.StockCategoryID != null && s.StockCategoryID != CatId) return false;
+                    if (s.StockFamilyID != null && s.StockFamilyID != FamId) return false;
+                    if (s.Department != null && s.Department != Requisition.Department) return false;
+                    if (s.SubDepartment != null && s.SubDepartment != Requisition.SubDepartment) return false;
+                    return true;
+                }
+
+                UserApprovalScope2? ResolveScopeV2(InventoryUser Vsl, int? CatId, int? FamId, int Lvl)
+                {
+                    return ScopesV2.Where(s => MatchesV2(s, Vsl, CatId, FamId, Lvl))
+                        .OrderByDescending(s => s.Specificity)
+                        .ThenBy(s => s.ID)
+                        .FirstOrDefault();
+                }
+
                 var ApprovalMatrix = new List<object>();
                 var ApproverCount = Requisition.ApprovalMaxLevel;
 
                 for (int i = 0; i < ApproverCount; i++)
                 {
                     var Level = i + 1;
+                    int? ResolvedUserId = null;
+                    string? ResolvedUsername = null;
+                    object? MatchedSummary = null;
+
+                    if (Vessel.ApprovalRuleVersion == 2)
+                    {
+                        var ResolvedV2 = ResolveScopeV2(Vessel, FamilyStockCategoryID, FamilyFamilyID, Level);
+                        ResolvedUserId = ResolvedV2?.UserID;
+                        ResolvedUsername = ResolvedV2?.User?.Username;
+                        MatchedSummary = ResolvedV2 == null ? null : new
+                        {
+                            ResolvedV2.ID,
+                            ResolvedV2.VesselID,
+                            ResolvedV2.VesselGroupID,
+                            ResolvedV2.CompanyDB,
+                            ResolvedV2.Group,
+                            ResolvedV2.StockCategoryID,
+                            ResolvedV2.StockFamilyID,
+                            ResolvedV2.Department,
+                            ResolvedV2.SubDepartment,
+                        };
+                    }
+                    else
+                    {
                     UserApprovalScope? ResolvedScope = null;
 
                     // ----------------------------------------------------------------
@@ -254,25 +314,30 @@ namespace Pupa.Controllers
                         x.Department == null &&
                         x.SubDepartment == null);
 
+                    ResolvedUserId = ResolvedScope?.UserID;
+                    ResolvedUsername = ResolvedScope?.User?.Username;
+                    MatchedSummary = ResolvedScope == null ? null : new
+                    {
+                        ResolvedScope.ID,
+                        ResolvedScope.InventoryUserID,
+                        ResolvedScope.StockCategoryID,
+                        ResolvedScope.StockFamilyID,
+                        ResolvedScope.Department,
+                        ResolvedScope.SubDepartment,
+                    };
+                    }
+
                     var ActualApprover = GetActualApproverName(Level);
 
                     ApprovalMatrix.Add(new
                     {
                         Level,
-                        Found = ResolvedScope != null,
-                        ShouldBeApproverUserID = ResolvedScope?.UserID,
-                        ShouldBeApproverUsername = ResolvedScope?.User?.Username,
+                        Found = ResolvedUserId != null,
+                        ShouldBeApproverUserID = ResolvedUserId,
+                        ShouldBeApproverUsername = ResolvedUsername,
                         ActualApprovedBy = ActualApprover,
                         IsActuallyApproved = !string.IsNullOrWhiteSpace(ActualApprover),
-                        MatchedScope = ResolvedScope == null ? null : new
-                        {
-                            ResolvedScope.ID,
-                            ResolvedScope.InventoryUserID,
-                            ResolvedScope.StockCategoryID,
-                            ResolvedScope.StockFamilyID,
-                            ResolvedScope.Department,
-                            ResolvedScope.SubDepartment,
-                        }
+                        MatchedScope = MatchedSummary
                     });
                 }
 
@@ -389,6 +454,17 @@ namespace Pupa.Controllers
                     .Where(x => RelevantVesselGroupIDs.Contains(x.VesselGroupID.Value))
                     .ToListAsync();
 
+                // Only loaded when at least one relevant vessel actually opted into v2 —
+                // v1-only requests don't pay for the extra query.
+                List<UserApprovalScope2> ScopesV2 = new();
+                if (Vessels.Any(x => x.ApprovalRuleVersion == 2))
+                {
+                    ScopesV2 = await db.UserApprovalScope2.AsNoTracking()
+                        .Include(x => x.User)
+                        .Where(x => x.IsActive != false)
+                        .ToListAsync();
+                }
+
                 var FamilyMap = await db.StockFamily.AsNoTracking().ToListAsync();
 
                 var UserByUsernameLower = await db.User.AsNoTracking()
@@ -450,7 +526,67 @@ namespace Pupa.Controllers
                     return Resolved;
                 }
 
-                object BuildItem(Requisition Requisition, InventoryUser Vessel, int? Level, UserApprovalScope? ResolvedScope, bool IsAdminOverride, string? AdminApprovedBy = null)
+                // v2 match: every dimension is a wildcard when NULL. "Group" (free-text
+                // label) is intentionally NOT checked — it has no corresponding field on
+                // Requisition to match against, it's organizational metadata only.
+                bool MatchesV2(UserApprovalScope2 s, Requisition Req, InventoryUser Vsl, int? CatId, int? FamId, int Lvl)
+                {
+                    if (s.IsActive == false) return false;
+                    if (s.Level != null && s.Level != Lvl) return false;
+                    if (s.VesselID != null && s.VesselID != Vsl.ID) return false;
+                    if (s.VesselGroupID != null && s.VesselGroupID != Vsl.Group?.ID) return false;
+                    if (s.CompanyDB != null && s.CompanyDB != Vsl.DB) return false;
+                    if (s.StockCategoryID != null && s.StockCategoryID != CatId) return false;
+                    if (s.StockFamilyID != null && s.StockFamilyID != FamId) return false;
+                    if (s.Department != null && s.Department != Req.Department) return false;
+                    if (s.SubDepartment != null && s.SubDepartment != Req.SubDepartment) return false;
+                    return true;
+                }
+
+                // Unified resolver: picks the v1 cascade or the v2 Specificity-based match
+                // depending on the vessel's ApprovalRuleVersion flag, normalized to a plain
+                // (UserID, display summary) pair since the two source tables are different
+                // C# types.
+                (int? UserId, object? Matched) ResolveApprover(Requisition Requisition, InventoryUser Vessel, int Level)
+                {
+                    if (Vessel.ApprovalRuleVersion == 2)
+                    {
+                        var Family = FamilyMap.FirstOrDefault(x => x.FamilyID == Requisition.CategoryID);
+                        var ResolvedV2 = ScopesV2
+                            .Where(s => MatchesV2(s, Requisition, Vessel, Family?.StockCategoryID, Family?.FamilyID, Level))
+                            .OrderByDescending(s => s.Specificity)
+                            .ThenBy(s => s.ID)
+                            .FirstOrDefault();
+
+                        object? MatchedV2 = ResolvedV2 == null ? null : new
+                        {
+                            ResolvedV2.ID,
+                            ResolvedV2.VesselID,
+                            ResolvedV2.VesselGroupID,
+                            ResolvedV2.CompanyDB,
+                            ResolvedV2.Group,
+                            ResolvedV2.StockCategoryID,
+                            ResolvedV2.StockFamilyID,
+                            ResolvedV2.Department,
+                            ResolvedV2.SubDepartment,
+                        };
+                        return (ResolvedV2?.UserID, MatchedV2);
+                    }
+
+                    var Resolved = ResolveScope(Requisition, Vessel, Vessel.Group.ID, Level);
+                    object? Matched = Resolved == null ? null : new
+                    {
+                        Resolved.ID,
+                        Resolved.InventoryUserID,
+                        Resolved.StockCategoryID,
+                        Resolved.StockFamilyID,
+                        Resolved.Department,
+                        Resolved.SubDepartment,
+                    };
+                    return (Resolved?.UserID, Matched);
+                }
+
+                object BuildItem(Requisition Requisition, InventoryUser Vessel, int? Level, object? MatchedScopeSummary, bool IsAdminOverride, string? AdminApprovedBy = null)
                 {
                     var IsReverted = Requisition.RevertStatus == "REVERTED";
 
@@ -480,15 +616,7 @@ namespace Pupa.Controllers
                         },
                         VesselID = Vessel.ID,
                         VesselGroupID = Vessel.Group.ID,
-                        MatchedScope = ResolvedScope == null ? null : new
-                        {
-                            ResolvedScope.ID,
-                            ResolvedScope.InventoryUserID,
-                            ResolvedScope.StockCategoryID,
-                            ResolvedScope.StockFamilyID,
-                            ResolvedScope.Department,
-                            ResolvedScope.SubDepartment,
-                        }
+                        MatchedScope = MatchedScopeSummary
                     };
                 }
 
@@ -533,11 +661,11 @@ namespace Pupa.Controllers
                         // 1) Flow normal
                         if (!IsFullyApproved)
                         {
-                            var ResolvedScope = ResolveScope(Requisition, Vessel, Vessel.Group.ID, NormalPendingLevel);
+                            var Resolved = ResolveApprover(Requisition, Vessel, NormalPendingLevel);
 
-                            if (ResolvedScope?.UserID == User.ID)
+                            if (Resolved.UserId == User.ID)
                             {
-                                PendingList.Add(BuildItem(Requisition, Vessel, NormalPendingLevel, ResolvedScope, IsAdminOverride: false));
+                                PendingList.Add(BuildItem(Requisition, Vessel, NormalPendingLevel, Resolved.Matched, IsAdminOverride: false));
                                 AddedThisRequisition = true;
                             }
                         }
@@ -547,8 +675,8 @@ namespace Pupa.Controllers
                         {
                             foreach (var (Level, ApprovedByName) in AdminApprovedLevels)
                             {
-                                var ResolvedScope = ResolveScope(Requisition, Vessel, Vessel.Group.ID, Level);
-                                PendingList.Add(BuildItem(Requisition, Vessel, Level, ResolvedScope, IsAdminOverride: true, ApprovedByName));
+                                var Resolved = ResolveApprover(Requisition, Vessel, Level);
+                                PendingList.Add(BuildItem(Requisition, Vessel, Level, Resolved.Matched, IsAdminOverride: true, ApprovedByName));
                                 AddedThisRequisition = true;
                             }
                         }
@@ -557,8 +685,8 @@ namespace Pupa.Controllers
                         if (IsAdminUser && Requisition.RevertStatus == "REVERTED" && !AddedThisRequisition)
                         {
                             var RevertLevel = IsFullyApproved ? (int?)null : NormalPendingLevel;
-                            var ResolvedScope = IsFullyApproved ? null : ResolveScope(Requisition, Vessel, Vessel.Group.ID, NormalPendingLevel);
-                            PendingList.Add(BuildItem(Requisition, Vessel, RevertLevel, ResolvedScope, IsAdminOverride: false));
+                            object? RevertMatched = IsFullyApproved ? null : ResolveApprover(Requisition, Vessel, NormalPendingLevel).Matched;
+                            PendingList.Add(BuildItem(Requisition, Vessel, RevertLevel, RevertMatched, IsAdminOverride: false));
                             AddedThisRequisition = true;
                         }
 

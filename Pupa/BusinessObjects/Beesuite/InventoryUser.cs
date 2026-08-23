@@ -267,6 +267,15 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _Size;
             set { OnPropertyChanging(); _Size = value; OnPropertyChanged(); }
         }
+        /// <summary>Which approval-scope table drives this vessel's routing: NULL/1 =
+        /// UserApprovalScope (old cascade), 2 = UserApprovalScope2 (Specificity-based).</summary>
+        private short? _ApprovalRuleVersion { get; set; }
+        [Column("ApprovalRuleVersion")]
+        public virtual short? ApprovalRuleVersion
+        {
+            get => _ApprovalRuleVersion;
+            set { OnPropertyChanging(); _ApprovalRuleVersion = value; OnPropertyChanged(); }
+        }
 
         #endregion
         public virtual ObservableCollection<UserVesselRel>? UserVesselRels { get; set; }
