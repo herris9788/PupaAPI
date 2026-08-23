@@ -122,5 +122,17 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _IsLogistic;
             set { OnPropertyChanging(); _IsLogistic = value; OnPropertyChanged(); }
         }
+
+        // BeeSuite-only: per-role override of Menu.IsComingSoon for this
+        // (TemplateName, MenuID) pair. NULL = inherit the menu's global
+        // default. Lets e.g. Quick Order seed as Soon for one role's template
+        // and not-Soon for another, even though Menu.IsComingSoon is one row.
+        private bool? _IsComingSoon { get; set; }
+        [Column("IsComingSoon")]
+        public virtual bool? IsComingSoon
+        {
+            get => _IsComingSoon;
+            set { OnPropertyChanging(); _IsComingSoon = value; OnPropertyChanged(); }
+        }
     }
 }

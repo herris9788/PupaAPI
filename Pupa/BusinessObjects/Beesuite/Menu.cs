@@ -86,5 +86,16 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _IsLogistic;
             set { OnPropertyChanging(); _IsLogistic = value; OnPropertyChanged(); }
         }
+
+        // BeeSuite-only: default "Coming Soon" state for this menu (only
+        // meaningful for MenuCode rows prefixed "BS_" — BeeSuite's own menu
+        // catalog, added alongside this table's existing unrelated rows).
+        private bool _IsComingSoon { get; set; } = false;
+        [Column("IsComingSoon")]
+        public virtual bool IsComingSoon
+        {
+            get => _IsComingSoon;
+            set { OnPropertyChanging(); _IsComingSoon = value; OnPropertyChanged(); }
+        }
     }
 }

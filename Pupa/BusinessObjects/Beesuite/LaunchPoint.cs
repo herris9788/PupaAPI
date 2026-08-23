@@ -147,6 +147,16 @@ namespace Pupa.BusinessObjects.Beesuite
             set { OnPropertyChanging(); _templateItemID = value; OnPropertyChanged(); }
         }
 
+        // BeeSuite-only: per-user override of Menu.IsComingSoon (and of the
+        // role template's IsComingSoon, if seeded from one). NULL = inherit.
+        private bool? _isComingSoon;
+        [Column("IsComingSoon")]
+        public virtual bool? IsComingSoon
+        {
+            get => _isComingSoon;
+            set { OnPropertyChanging(); _isComingSoon = value; OnPropertyChanged(); }
+        }
+
         // ── Navigation Properties ────────────────────────────────────────
 
         [ForeignKey("ParentID")]
