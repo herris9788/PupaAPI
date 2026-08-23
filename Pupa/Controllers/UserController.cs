@@ -366,6 +366,153 @@ namespace Pupa.Controllers
             }
         }
 
+        // Pre-creation preview: what would the approver chain / ApprovalMaxLevel
+        // be for a NOT-YET-CREATED requisition on this vessel? CheckApprover
+        // above needs an existing Requisition row to read Department/CategoryID
+        // /ApprovalRuleVersion from — the web/mobile "create IR" flows call this
+        // instead, BEFORE the row exists, so ApprovalMaxLevel and the first
+        // approver's notification are computed the same way (v1 cascade or v2
+        // Specificity-based UserApprovalScope2, per Vessel.ApprovalRuleVersion —
+        // there's no Requisition snapshot yet to read) as everywhere else,
+        // rather than being recomputed client-side against UserApprovalScope
+        // only. Returns one Items[] entry per level (1-7) that resolved to an
+        // approver; ApprovalMaxLevel = Items.Count (a level with no match is
+        // simply absent, matching how the client used to count matched rows).
+        [HttpGet("ResolveApprovers")]
+        public async Task<IActionResult> ResolveApprovers([FromQuery] ResolveApproversDTO Query)
+        {
+            try
+            {
+                if (Query.VesselID == null) throw new Exception("VesselID is required");
+
+                var Vessel = await db.InventoryUser.AsNoTracking()
+                    .Include(x => x.Group)
+                    .FirstOrDefaultAsync(x => x.ID == Query.VesselID);
+
+                if (Vessel?.Group == null) throw new Exception("Vessel or vessel group not found");
+
+                var VesselGroupId = Vessel.Group.ID;
+
+                var Family = Query.CategoryID != null
+                    ? db.StockFamily.FirstOrDefault(x => x.FamilyID == Query.CategoryID)
+                    : null;
+                int? FamilyStockCategoryID = Family?.StockCategoryID;
+                int? FamilyFamilyID = Family?.FamilyID;
+
+                var ResolveMatrix = new List<object>();
+
+                if (Vessel.ApprovalRuleVersion == 2)
+                {
+                    var ScopesV2 = await db.UserApprovalScope2.AsNoTracking()
+                        .Include(x => x.User)
+                        .Where(x => x.IsActive != false)
+                        .ToListAsync();
+
+                    bool MatchesV2(UserApprovalScope2 s, int Lvl)
+                    {
+                        if (s.IsActive == false) return false;
+                        if (s.Level != null && s.Level != Lvl) return false;
+                        if (s.VesselID != null && s.VesselID != Vessel.ID) return false;
+                        if (s.VesselGroupID != null && s.VesselGroupID != Vessel.Group?.ID) return false;
+                        if (s.CompanyDB != null && s.CompanyDB != Vessel.DB) return false;
+                        if (s.StockCategoryID != null && s.StockCategoryID != FamilyStockCategoryID) return false;
+                        if (s.StockFamilyID != null && s.StockFamilyID != FamilyFamilyID) return false;
+                        if (s.Department != null && s.Department != Query.Department) return false;
+                        if (s.SubDepartment != null && s.SubDepartment != Query.SubDepartment) return false;
+                        return true;
+                    }
+
+                    for (int Level = 1; Level <= 7; Level++)
+                    {
+                        var Resolved = ScopesV2.Where(s => MatchesV2(s, Level))
+                            .OrderByDescending(s => s.Specificity)
+                            .ThenBy(s => s.ID)
+                            .FirstOrDefault();
+                        if (Resolved?.UserID == null) continue;
+
+                        ResolveMatrix.Add(new
+                        {
+                            Level,
+                            Resolved.UserID,
+                            Username = Resolved.User?.Username,
+                            Phone = Resolved.User?.Phone
+                        });
+                    }
+                }
+                else
+                {
+                    var Scopes = await db.UserApprovalScope.AsNoTracking()
+                        .Include(x => x.User)
+                        .Where(x => x.VesselGroupID == VesselGroupId)
+                        .ToListAsync();
+
+                    for (int Level = 1; Level <= 7; Level++)
+                    {
+                        UserApprovalScope? ResolvedScope = null;
+
+                        if (Family != null)
+                        {
+                            ResolvedScope = Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == Query.Department && x.SubDepartment == Query.SubDepartment);
+                            ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == Query.Department && x.SubDepartment == null);
+                            ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == null && x.SubDepartment == null);
+                            ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == -1 && x.Department == Query.Department && x.SubDepartment == null);
+                            ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == -1 && x.Department == null && x.SubDepartment == null);
+                            ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == -1 && x.StockFamilyID == FamilyFamilyID && x.Department == Query.Department && x.SubDepartment == null);
+                            ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == -1 && x.StockFamilyID == FamilyFamilyID && x.Department == null && x.SubDepartment == null);
+                        }
+
+                        ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == -1 && x.StockFamilyID == -1 && x.Department == Query.Department && x.SubDepartment == null);
+                        ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == -1 && x.StockFamilyID == -1 && x.Department == null && x.SubDepartment == null);
+
+                        if (Family != null)
+                        {
+                            ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == Query.Department && x.SubDepartment == Query.SubDepartment);
+                            ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == Query.Department && x.SubDepartment == null);
+                            ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == null && x.SubDepartment == null);
+                            ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == -1 && x.Department == Query.Department && x.SubDepartment == null);
+                            ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == -1 && x.Department == null && x.SubDepartment == null);
+                            ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == -1 && x.StockFamilyID == FamilyFamilyID && x.Department == Query.Department && x.SubDepartment == null);
+                            ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == -1 && x.StockFamilyID == FamilyFamilyID && x.Department == null && x.SubDepartment == null);
+                        }
+
+                        ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == -1 && x.StockFamilyID == -1 && x.Department == Query.Department && x.SubDepartment == null);
+                        ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == -1 && x.StockFamilyID == -1 && x.Department == null && x.SubDepartment == null);
+
+                        if (ResolvedScope?.UserID == null) continue;
+
+                        ResolveMatrix.Add(new
+                        {
+                            Level,
+                            ResolvedScope.UserID,
+                            Username = ResolvedScope.User?.Username,
+                            Phone = ResolvedScope.User?.Phone
+                        });
+                    }
+                }
+
+                return Ok(new
+                {
+                    Success = true,
+                    Message = "OK",
+                    Data = new
+                    {
+                        Items = ResolveMatrix,
+                        ApprovalMaxLevel = ResolveMatrix.Count,
+                        ApprovalRuleVersion = Vessel.ApprovalRuleVersion ?? 1
+                    }
+                });
+            }
+            catch (Exception Ex)
+            {
+                return BadRequest(new
+                {
+                    Success = false,
+                    Message = Ex.Message,
+                    Data = (object?)null
+                });
+            }
+        }
+
 
         [HttpGet("Approval/Pending")]
         public async Task<IActionResult> PendingApproval([FromQuery] PendingApproverDTO Query)
