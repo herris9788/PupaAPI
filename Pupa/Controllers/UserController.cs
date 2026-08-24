@@ -174,6 +174,39 @@ namespace Pupa.Controllers
                 var ApprovalMatrix = new List<object>();
                 var ApproverCount = Requisition.ApprovalMaxLevel;
 
+                // Self-heal: a null ApprovalMaxLevel means it was never (re)computed
+                // for this document — most commonly because the vessel's approval
+                // matrix (e.g. its "All Groups" rows) was set up or changed AFTER
+                // this document was already submitted, so the snapshot taken at
+                // submit time came back empty/zero and stuck that way. Recompute it
+                // live from the CURRENT matrix and persist it, so the document
+                // stops showing a blank approval chain here — and, since
+                // PendingApproval's own query filters out any Requisition whose
+                // stored ApprovalMaxLevel isn't > 0, stops being silently excluded
+                // from the approver's Pending Approvals list too.
+                if (ApproverCount == null && Requisition.ApprovalRuleVersion == 2)
+                {
+                    int LiveCount = 0;
+                    if (!string.IsNullOrEmpty(Requisition.Group))
+                    {
+                        LiveCount = GroupChain.Count;
+                    }
+                    else
+                    {
+                        for (int lvl = 1; lvl <= 7; lvl++)
+                        {
+                            if (ResolveScopeV2(Vessel, FamilyStockCategoryID, FamilyFamilyID, lvl, Requisition.Group) != null)
+                                LiveCount = lvl;
+                        }
+                    }
+                    if (LiveCount > 0)
+                    {
+                        Requisition.ApprovalMaxLevel = LiveCount;
+                        await db.SaveChangesAsync();
+                        ApproverCount = LiveCount;
+                    }
+                }
+
                 for (int i = 0; i < ApproverCount; i++)
                 {
                     var Level = i + 1;
