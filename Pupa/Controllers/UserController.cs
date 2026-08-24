@@ -127,6 +127,31 @@ namespace Pupa.Controllers
                         .FirstOrDefault();
                 }
 
+                // "All Groups" fallback: a row with Group == NULL applies to every
+                // Group at that Level. Used per-level below when the specific Group
+                // has no row of its own at that Level (e.g. Group defines only
+                // Level 2, so Level 1 falls back to the vessel's "All Groups" Level 1).
+                bool MatchesV2AllGroups(UserApprovalScope2 s, InventoryUser Vsl, int Lvl)
+                {
+                    if (s.IsActive == false) return false;
+                    if (s.Group != null) return false;
+                    if (s.Level != null && s.Level != Lvl) return false;
+                    if (s.VesselID != null && s.VesselID != Vsl.ID) return false;
+                    if (s.VesselGroupID != null && s.VesselGroupID != Vsl.Group?.ID) return false;
+                    if (s.CompanyDB != null && s.CompanyDB != Vsl.DB) return false;
+                    if (s.Department != null && s.Department != Requisition.Department) return false;
+                    if (s.SubDepartment != null && s.SubDepartment != Requisition.SubDepartment) return false;
+                    return true;
+                }
+
+                UserApprovalScope2? ResolveScopeV2AllGroups(InventoryUser Vsl, int Lvl)
+                {
+                    return ScopesV2.Where(s => MatchesV2AllGroups(s, Vsl, Lvl))
+                        .OrderByDescending(s => s.Specificity)
+                        .ThenBy(s => s.ID)
+                        .FirstOrDefault();
+                }
+
                 // Group-combined documents: admins number a Group's approval rows
                 // however makes sense to them (e.g. only Level 2, no Level 1) — the
                 // DB Level value is NOT a required-contiguous-from-1 position, it's
@@ -140,7 +165,8 @@ namespace Pupa.Controllers
                 {
                     for (int lvl = 1; lvl <= 7; lvl++)
                     {
-                        var r = ResolveScopeV2(Vessel, null, null, lvl, Requisition.Group);
+                        var r = ResolveScopeV2(Vessel, null, null, lvl, Requisition.Group)
+                            ?? ResolveScopeV2AllGroups(Vessel, lvl);
                         if (r != null) GroupChain.Add(r);
                     }
                 }
@@ -471,12 +497,37 @@ namespace Pupa.Controllers
                         return true;
                     }
 
+                    // "All Groups" fallback: a row with Group == NULL applies to every
+                    // Group at that Level. Used per-level when the specific Group has
+                    // no row of its own at that Level.
+                    bool MatchesV2AllGroups(UserApprovalScope2 s, int Lvl)
+                    {
+                        if (s.IsActive == false) return false;
+                        if (s.Group != null) return false;
+                        if (s.Level != null && s.Level != Lvl) return false;
+                        if (s.VesselID != null && s.VesselID != Vessel.ID) return false;
+                        if (s.VesselGroupID != null && s.VesselGroupID != Vessel.Group?.ID) return false;
+                        if (s.CompanyDB != null && s.CompanyDB != Vessel.DB) return false;
+                        if (s.Department != null && s.Department != Query.Department) return false;
+                        if (s.SubDepartment != null && s.SubDepartment != Query.SubDepartment) return false;
+                        return true;
+                    }
+
                     for (int Level = 1; Level <= 7; Level++)
                     {
                         var Resolved = ScopesV2.Where(s => MatchesV2(s, Level))
                             .OrderByDescending(s => s.Specificity)
                             .ThenBy(s => s.ID)
                             .FirstOrDefault();
+
+                        if (Resolved == null && !string.IsNullOrEmpty(Query.Group))
+                        {
+                            Resolved = ScopesV2.Where(s => MatchesV2AllGroups(s, Level))
+                                .OrderByDescending(s => s.Specificity)
+                                .ThenBy(s => s.ID)
+                                .FirstOrDefault();
+                        }
+
                         if (Resolved?.UserID == null) continue;
 
                         ResolveMatrix.Add(new
@@ -750,6 +801,22 @@ namespace Pupa.Controllers
                     return true;
                 }
 
+                // "All Groups" fallback: a row with Group == NULL applies to every
+                // Group at that Level. Used per-level when the specific Group has
+                // no row of its own at that Level.
+                bool MatchesV2AllGroups(UserApprovalScope2 s, Requisition Req, InventoryUser Vsl, int Lvl)
+                {
+                    if (s.IsActive == false) return false;
+                    if (s.Group != null) return false;
+                    if (s.Level != null && s.Level != Lvl) return false;
+                    if (s.VesselID != null && s.VesselID != Vsl.ID) return false;
+                    if (s.VesselGroupID != null && s.VesselGroupID != Vsl.Group?.ID) return false;
+                    if (s.CompanyDB != null && s.CompanyDB != Vsl.DB) return false;
+                    if (s.Department != null && s.Department != Req.Department) return false;
+                    if (s.SubDepartment != null && s.SubDepartment != Req.SubDepartment) return false;
+                    return true;
+                }
+
                 // Group-combined documents: same rationale as CheckApprover above —
                 // a Group's DB Level values aren't required to be contiguous from 1,
                 // so [Level] here means "the Nth resolved approver" (position),
@@ -765,6 +832,13 @@ namespace Pupa.Controllers
                             .OrderByDescending(s => s.Specificity)
                             .ThenBy(s => s.ID)
                             .FirstOrDefault();
+
+                        r ??= ScopesV2
+                            .Where(s => MatchesV2AllGroups(s, Requisition, Vessel, lvl))
+                            .OrderByDescending(s => s.Specificity)
+                            .ThenBy(s => s.ID)
+                            .FirstOrDefault();
+
                         if (r != null) chain.Add(r);
                     }
                     return chain;
