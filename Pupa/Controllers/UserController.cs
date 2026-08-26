@@ -273,21 +273,6 @@ namespace Pupa.Controllers
                             x.Department == null &&
                             x.SubDepartment == null);
 
-                        // [2b] InventoryUser + StockCategory + StockFamily + SubDepartment
-                        // (Department left null on the row — admin scoped this by
-                        // SubDepartment only, e.g. "QHSE approves regardless of which
-                        // Department submitted it". [1]/[2] never match this shape
-                        // since they require an EXACT Department match; without this
-                        // tier the row is simply unreachable whenever the requisition
-                        // has a Department set, even though SubDepartment matches.
-                        ResolvedScope ??= Scopes.FirstOrDefault(x =>
-                            x.Level == Level &&
-                            x.InventoryUserID == Vessel.ID &&
-                            x.StockCategoryID == FamilyStockCategoryID &&
-                            x.StockFamilyID == FamilyFamilyID &&
-                            x.Department == null &&
-                            x.SubDepartment == Requisition.SubDepartment);
-
                         // [4] InventoryUser + StockCategory + Department
                         ResolvedScope ??= Scopes.FirstOrDefault(x =>
                             x.Level == Level &&
@@ -306,15 +291,6 @@ namespace Pupa.Controllers
                             x.Department == null &&
                             x.SubDepartment == null);
 
-                        // [4b] InventoryUser + StockCategory + SubDepartment (see [2b])
-                        ResolvedScope ??= Scopes.FirstOrDefault(x =>
-                            x.Level == Level &&
-                            x.InventoryUserID == Vessel.ID &&
-                            x.StockCategoryID == FamilyStockCategoryID &&
-                            x.StockFamilyID == -1 &&
-                            x.Department == null &&
-                            x.SubDepartment == Requisition.SubDepartment);
-
                         // [6] InventoryUser + StockFamily + Department
                         ResolvedScope ??= Scopes.FirstOrDefault(x =>
                             x.Level == Level &&
@@ -332,15 +308,6 @@ namespace Pupa.Controllers
                             x.StockFamilyID == FamilyFamilyID &&
                             x.Department == null &&
                             x.SubDepartment == null);
-
-                        // [6b] InventoryUser + StockFamily + SubDepartment (see [2b])
-                        ResolvedScope ??= Scopes.FirstOrDefault(x =>
-                            x.Level == Level &&
-                            x.InventoryUserID == Vessel.ID &&
-                            x.StockCategoryID == -1 &&
-                            x.StockFamilyID == FamilyFamilyID &&
-                            x.Department == null &&
-                            x.SubDepartment == Requisition.SubDepartment);
                     }
 
                     // [8] InventoryUser + Department  (tidak butuh StockFamily, selalu dijalankan)
@@ -351,16 +318,6 @@ namespace Pupa.Controllers
                         x.StockFamilyID == -1 &&
                         x.Department == Requisition.Department &&
                         x.SubDepartment == null);
-
-                    // [8b] InventoryUser + SubDepartment only (see [2b]) — more specific
-                    // than [9] (matches nothing beyond Vessel+Level), so it must run first.
-                    ResolvedScope ??= Scopes.FirstOrDefault(x =>
-                        x.Level == Level &&
-                        x.InventoryUserID == Vessel.ID &&
-                        x.StockCategoryID == -1 &&
-                        x.StockFamilyID == -1 &&
-                        x.Department == null &&
-                        x.SubDepartment == Requisition.SubDepartment);
 
                     // [9] InventoryUser saja
                     ResolvedScope ??= Scopes.FirstOrDefault(x =>
@@ -400,15 +357,6 @@ namespace Pupa.Controllers
                             x.Department == null &&
                             x.SubDepartment == null);
 
-                        // [11b] Global + StockCategory + StockFamily + SubDepartment (see [2b])
-                        ResolvedScope ??= Scopes.FirstOrDefault(x =>
-                            x.Level == Level &&
-                            x.InventoryUserID == null &&
-                            x.StockCategoryID == FamilyStockCategoryID &&
-                            x.StockFamilyID == FamilyFamilyID &&
-                            x.Department == null &&
-                            x.SubDepartment == Requisition.SubDepartment);
-
                         // [13] Global + StockCategory + Department
                         ResolvedScope ??= Scopes.FirstOrDefault(x =>
                             x.Level == Level &&
@@ -427,15 +375,6 @@ namespace Pupa.Controllers
                             x.Department == null &&
                             x.SubDepartment == null);
 
-                        // [13b] Global + StockCategory + SubDepartment (see [2b])
-                        ResolvedScope ??= Scopes.FirstOrDefault(x =>
-                            x.Level == Level &&
-                            x.InventoryUserID == null &&
-                            x.StockCategoryID == FamilyStockCategoryID &&
-                            x.StockFamilyID == -1 &&
-                            x.Department == null &&
-                            x.SubDepartment == Requisition.SubDepartment);
-
                         // [15] Global + StockFamily + Department
                         ResolvedScope ??= Scopes.FirstOrDefault(x =>
                             x.Level == Level &&
@@ -453,15 +392,6 @@ namespace Pupa.Controllers
                             x.StockFamilyID == FamilyFamilyID &&
                             x.Department == null &&
                             x.SubDepartment == null);
-
-                        // [15b] Global + StockFamily + SubDepartment (see [2b])
-                        ResolvedScope ??= Scopes.FirstOrDefault(x =>
-                            x.Level == Level &&
-                            x.InventoryUserID == null &&
-                            x.StockCategoryID == -1 &&
-                            x.StockFamilyID == FamilyFamilyID &&
-                            x.Department == null &&
-                            x.SubDepartment == Requisition.SubDepartment);
                     }
 
                     // [17] Global + Department (tidak butuh StockFamily, selalu dijalankan)
@@ -472,16 +402,6 @@ namespace Pupa.Controllers
                         x.StockFamilyID == -1 &&
                         x.Department == Requisition.Department &&
                         x.SubDepartment == null);
-
-                    // [17b] Global + SubDepartment only (see [2b]) — more specific than
-                    // [18] (matches nothing beyond Level+VesselGroup), must run first.
-                    ResolvedScope ??= Scopes.FirstOrDefault(x =>
-                        x.Level == Level &&
-                        x.InventoryUserID == null &&
-                        x.StockCategoryID == -1 &&
-                        x.StockFamilyID == -1 &&
-                        x.Department == null &&
-                        x.SubDepartment == Requisition.SubDepartment);
 
                     // [18] Paling general: catch-all VesselGroup
                     ResolvedScope ??= Scopes.FirstOrDefault(x =>
@@ -663,42 +583,32 @@ namespace Pupa.Controllers
                     {
                         UserApprovalScope? ResolvedScope = null;
 
-                        // SubDepartment-only tiers ("Xb") — see the identical comment in
-                        // CheckApprover's/PendingApproval's cascades earlier in this file.
                         if (Family != null)
                         {
                             ResolvedScope = Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == Query.Department && x.SubDepartment == Query.SubDepartment);
                             ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == Query.Department && x.SubDepartment == null);
-                            ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == null && x.SubDepartment == Query.SubDepartment);
                             ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == null && x.SubDepartment == null);
                             ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == -1 && x.Department == Query.Department && x.SubDepartment == null);
-                            ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == -1 && x.Department == null && x.SubDepartment == Query.SubDepartment);
                             ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == -1 && x.Department == null && x.SubDepartment == null);
                             ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == -1 && x.StockFamilyID == FamilyFamilyID && x.Department == Query.Department && x.SubDepartment == null);
-                            ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == -1 && x.StockFamilyID == FamilyFamilyID && x.Department == null && x.SubDepartment == Query.SubDepartment);
                             ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == -1 && x.StockFamilyID == FamilyFamilyID && x.Department == null && x.SubDepartment == null);
                         }
 
                         ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == -1 && x.StockFamilyID == -1 && x.Department == Query.Department && x.SubDepartment == null);
-                        ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == -1 && x.StockFamilyID == -1 && x.Department == null && x.SubDepartment == Query.SubDepartment);
                         ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == -1 && x.StockFamilyID == -1 && x.Department == null && x.SubDepartment == null);
 
                         if (Family != null)
                         {
                             ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == Query.Department && x.SubDepartment == Query.SubDepartment);
                             ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == Query.Department && x.SubDepartment == null);
-                            ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == null && x.SubDepartment == Query.SubDepartment);
                             ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == null && x.SubDepartment == null);
                             ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == -1 && x.Department == Query.Department && x.SubDepartment == null);
-                            ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == -1 && x.Department == null && x.SubDepartment == Query.SubDepartment);
                             ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == -1 && x.Department == null && x.SubDepartment == null);
                             ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == -1 && x.StockFamilyID == FamilyFamilyID && x.Department == Query.Department && x.SubDepartment == null);
-                            ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == -1 && x.StockFamilyID == FamilyFamilyID && x.Department == null && x.SubDepartment == Query.SubDepartment);
                             ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == -1 && x.StockFamilyID == FamilyFamilyID && x.Department == null && x.SubDepartment == null);
                         }
 
                         ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == -1 && x.StockFamilyID == -1 && x.Department == Query.Department && x.SubDepartment == null);
-                        ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == -1 && x.StockFamilyID == -1 && x.Department == null && x.SubDepartment == Query.SubDepartment);
                         ResolvedScope ??= Scopes.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == -1 && x.StockFamilyID == -1 && x.Department == null && x.SubDepartment == null);
 
                         if (ResolvedScope?.UserID == null) continue;
@@ -868,47 +778,32 @@ namespace Pupa.Controllers
 
                     UserApprovalScope? Resolved = null;
 
-                    // SubDepartment-only tiers ("Xb") mirror this session's CheckApprover
-                    // fix: a row scoped by SubDepartment with Department left null (e.g.
-                    // "QHSE approves regardless of Department") was previously
-                    // unreachable whenever the requisition had a Department set, since
-                    // every existing tier required an EXACT Department match or both
-                    // null. Placed right after each tier's Department-analog so they
-                    // never displace an already-working match, only fill the gap.
                     if (Family != null)
                     {
                         Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == Requisition.Department && x.SubDepartment == Requisition.SubDepartment);
                         Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == Requisition.Department && x.SubDepartment == null);
-                        Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == null && x.SubDepartment == Requisition.SubDepartment);
                         Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == null && x.SubDepartment == null);
                         Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == -1 && x.Department == Requisition.Department && x.SubDepartment == null);
-                        Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == -1 && x.Department == null && x.SubDepartment == Requisition.SubDepartment);
                         Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == -1 && x.Department == null && x.SubDepartment == null);
                         Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == -1 && x.StockFamilyID == FamilyFamilyID && x.Department == Requisition.Department && x.SubDepartment == null);
-                        Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == -1 && x.StockFamilyID == FamilyFamilyID && x.Department == null && x.SubDepartment == Requisition.SubDepartment);
                         Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == -1 && x.StockFamilyID == FamilyFamilyID && x.Department == null && x.SubDepartment == null);
                     }
 
                     Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == -1 && x.StockFamilyID == -1 && x.Department == Requisition.Department && x.SubDepartment == null);
-                    Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == -1 && x.StockFamilyID == -1 && x.Department == null && x.SubDepartment == Requisition.SubDepartment);
                     Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == Vessel.ID && x.StockCategoryID == -1 && x.StockFamilyID == -1 && x.Department == null && x.SubDepartment == null);
 
                     if (Family != null)
                     {
                         Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == Requisition.Department && x.SubDepartment == Requisition.SubDepartment);
                         Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == Requisition.Department && x.SubDepartment == null);
-                        Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == null && x.SubDepartment == Requisition.SubDepartment);
                         Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == FamilyFamilyID && x.Department == null && x.SubDepartment == null);
                         Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == -1 && x.Department == Requisition.Department && x.SubDepartment == null);
-                        Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == -1 && x.Department == null && x.SubDepartment == Requisition.SubDepartment);
                         Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == FamilyStockCategoryID && x.StockFamilyID == -1 && x.Department == null && x.SubDepartment == null);
                         Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == -1 && x.StockFamilyID == FamilyFamilyID && x.Department == Requisition.Department && x.SubDepartment == null);
-                        Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == -1 && x.StockFamilyID == FamilyFamilyID && x.Department == null && x.SubDepartment == Requisition.SubDepartment);
                         Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == -1 && x.StockFamilyID == FamilyFamilyID && x.Department == null && x.SubDepartment == null);
                     }
 
                     Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == -1 && x.StockFamilyID == -1 && x.Department == Requisition.Department && x.SubDepartment == null);
-                    Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == -1 && x.StockFamilyID == -1 && x.Department == null && x.SubDepartment == Requisition.SubDepartment);
                     Resolved ??= ScopesInGroup.FirstOrDefault(x => x.Level == Level && x.InventoryUserID == null && x.StockCategoryID == -1 && x.StockFamilyID == -1 && x.Department == null && x.SubDepartment == null);
 
                     return Resolved;
