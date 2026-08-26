@@ -97,5 +97,25 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _IsComingSoon;
             set { OnPropertyChanging(); _IsComingSoon = value; OnPropertyChanged(); }
         }
+
+        // BeeSuite-only: which platform(s) this menu item is allowed to
+        // appear on — drives both the web sidebar and the mobile Quick
+        // Access grid, which otherwise both render off the same
+        // Menu/LaunchPoint grant.
+        private bool _AllowWeb { get; set; } = true;
+        [Column("AllowWeb")]
+        public virtual bool AllowWeb
+        {
+            get => _AllowWeb;
+            set { OnPropertyChanging(); _AllowWeb = value; OnPropertyChanged(); }
+        }
+
+        private bool _AllowMobile { get; set; } = false;
+        [Column("AllowMobile")]
+        public virtual bool AllowMobile
+        {
+            get => _AllowMobile;
+            set { OnPropertyChanging(); _AllowMobile = value; OnPropertyChanged(); }
+        }
     }
 }
