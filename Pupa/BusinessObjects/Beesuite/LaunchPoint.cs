@@ -157,6 +157,26 @@ namespace Pupa.BusinessObjects.Beesuite
             set { OnPropertyChanging(); _isComingSoon = value; OnPropertyChanged(); }
         }
 
+        // BeeSuite-only: per-user override of Menu.AllowWeb/AllowMobile —
+        // lets an admin grant a user this menu on ONE platform only (e.g.
+        // mobile-only), even though the menu itself is globally allowed on
+        // both. NULL = inherit the menu's global default.
+        private bool? _allowWeb;
+        [Column("AllowWeb")]
+        public virtual bool? AllowWeb
+        {
+            get => _allowWeb;
+            set { OnPropertyChanging(); _allowWeb = value; OnPropertyChanged(); }
+        }
+
+        private bool? _allowMobile;
+        [Column("AllowMobile")]
+        public virtual bool? AllowMobile
+        {
+            get => _allowMobile;
+            set { OnPropertyChanging(); _allowMobile = value; OnPropertyChanged(); }
+        }
+
         // ── Navigation Properties ────────────────────────────────────────
 
         [ForeignKey("ParentID")]
