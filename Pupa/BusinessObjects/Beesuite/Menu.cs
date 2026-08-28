@@ -128,5 +128,27 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _HideAppBar;
             set { OnPropertyChanging(); _HideAppBar = value; OnPropertyChanged(); }
         }
+
+        // BeeSuite-only: when true (and HideAppBar is false), the WebPage's
+        // AppBar shows the BeeSuite logo instead of the menu's title text.
+        private bool _AppBarShowLogo { get; set; } = false;
+        [Column("AppBarShowLogo")]
+        public virtual bool AppBarShowLogo
+        {
+            get => _AppBarShowLogo;
+            set { OnPropertyChanging(); _AppBarShowLogo = value; OnPropertyChanged(); }
+        }
+
+        // BeeSuite-only: when true, the WebPage embedding this menu's Route
+        // also renders the app's own floating bottom nav bar on top, so the
+        // user can jump straight to Home/Activity/Scan/Me without leaving
+        // via a back button first.
+        private bool _ShowBottomNav { get; set; } = false;
+        [Column("ShowBottomNav")]
+        public virtual bool ShowBottomNav
+        {
+            get => _ShowBottomNav;
+            set { OnPropertyChanging(); _ShowBottomNav = value; OnPropertyChanged(); }
+        }
     }
 }
