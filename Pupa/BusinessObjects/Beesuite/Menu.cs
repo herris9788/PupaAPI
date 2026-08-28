@@ -150,5 +150,15 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _ShowBottomNav;
             set { OnPropertyChanging(); _ShowBottomNav = value; OnPropertyChanged(); }
         }
+
+        // BeeSuite-only: when true (and HideAppBar is false), the WebPage's
+        // AppBar shows no leading back arrow at all.
+        private bool _HideBackButton { get; set; } = false;
+        [Column("HideBackButton")]
+        public virtual bool HideBackButton
+        {
+            get => _HideBackButton;
+            set { OnPropertyChanging(); _HideBackButton = value; OnPropertyChanged(); }
+        }
     }
 }
