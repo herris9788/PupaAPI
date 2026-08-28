@@ -151,14 +151,20 @@ namespace Pupa.BusinessObjects.Beesuite
             set { OnPropertyChanging(); _ShowBottomNav = value; OnPropertyChanged(); }
         }
 
-        // BeeSuite-only: when true (and HideAppBar is false), the WebPage's
-        // AppBar shows no leading back arrow at all.
-        private bool _HideBackButton { get; set; } = false;
-        [Column("HideBackButton")]
-        public virtual bool HideBackButton
+        // BeeSuite-only: minimum in-WebView navigation depth (1 = the
+        // WebPage's very first/root page) before the AppBar's leading back
+        // arrow appears (only meaningful when HideAppBar is false). 1 =
+        // always shown (today's default); 2 = hidden only on the first
+        // page, shown from the 2nd page the user navigates to onward; N =
+        // hidden until depth reaches N. Replaces the short-lived
+        // HideBackButton bool (dropped by the same migration that added
+        // this column) with a strictly more general setting.
+        private int _BackButtonMinDepth { get; set; } = 1;
+        [Column("BackButtonMinDepth")]
+        public virtual int BackButtonMinDepth
         {
-            get => _HideBackButton;
-            set { OnPropertyChanging(); _HideBackButton = value; OnPropertyChanged(); }
+            get => _BackButtonMinDepth;
+            set { OnPropertyChanging(); _BackButtonMinDepth = value; OnPropertyChanged(); }
         }
     }
 }
