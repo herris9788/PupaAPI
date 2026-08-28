@@ -166,5 +166,19 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _BackButtonMinDepth;
             set { OnPropertyChanging(); _BackButtonMinDepth = value; OnPropertyChanged(); }
         }
+
+        // BeeSuite-only: which in-WebView navigation depths (only relevant
+        // when ShowBottomNav is true) HIDE the floating bottom nav bar,
+        // e.g. "1" (hide only on the first page), "3,5" (hide those two
+        // pages only), "4-10" (hide a range), or "1,4-10" (combine both) —
+        // comma-separated single numbers and/or "a-b" ranges. Null/empty =
+        // shown on every page whenever ShowBottomNav is true (default).
+        private string? _BottomNavHideDepths { get; set; }
+        [Column("BottomNavHideDepths")]
+        public virtual string? BottomNavHideDepths
+        {
+            get => _BottomNavHideDepths;
+            set { OnPropertyChanging(); _BottomNavHideDepths = value; OnPropertyChanged(); }
+        }
     }
 }
