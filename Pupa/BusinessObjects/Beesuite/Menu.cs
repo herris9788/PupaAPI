@@ -117,5 +117,16 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _AllowMobile;
             set { OnPropertyChanging(); _AllowMobile = value; OnPropertyChanged(); }
         }
+
+        // BeeSuite-only: when true, the mobile WebPage embedding this menu's
+        // Route renders without its own AppBar (the embedded web page is
+        // expected to provide its own header/back control instead).
+        private bool _HideAppBar { get; set; } = false;
+        [Column("HideAppBar")]
+        public virtual bool HideAppBar
+        {
+            get => _HideAppBar;
+            set { OnPropertyChanging(); _HideAppBar = value; OnPropertyChanged(); }
+        }
     }
 }
