@@ -559,24 +559,25 @@ namespace Pupa.Controllers
         }
 
         /// <summary>
-        /// One combined Item Request + Job Request count for the Dashboard —
-        /// both the "documents I created" (Requester) and "documents awaiting
-        /// my sign-off" (Approver) views, each broken down Pending/Done/Cancel
-        /// (+Total). Built so the client stops re-implementing this
-        /// aggregation itself (it previously issued 6+ separate OData calls
-        /// per view and evaluated the approval chain in Dart, which is where
-        /// the v1/v2-vessel and Job-Request-category bugs fixed elsewhere in
-        /// this session kept recurring — one per client, one per platform).
+        /// One dedicated Item-Request-only count for the Dashboard — both the
+        /// "documents I created" (Requester) and "documents awaiting my
+        /// sign-off" (Approver) views, each broken down Pending/Done/Cancel/
+        /// Reverted (+Total). Job Request is deliberately NOT included here —
+        /// its dashboard numbers stay cheap raw $count queries client-side
+        /// (JobRequest.ApprovalStatus is a plain string, no chain-walking
+        /// needed), so this endpoint only carries the expensive Item Request
+        /// half (which previously cost 6+ separate OData calls plus a
+        /// per-item, per-vessel approval-chain walk in Dart for Pending and
+        /// Reverted — see DashboardWebContent.dart's old
+        /// _fetchApproverStats/ApprovalLogicHelper.getApproverChain, which was
+        /// also v1-only and silently returned an empty chain for v2 vessels).
         ///
         /// Approver.Pending reuses the EXISTING PendingApproval action
-        /// in-process for the Item Request half (same v1/v2 + admin-override +
-        /// revert-aware resolution, not re-implemented here) and
-        /// CountPendingJobRequestsForApprover (below) — built on the same
-        /// ResolveApprovers this session's Job Request approver-chain fixes
-        /// already use — for the Job Request half.
+        /// in-process (same v1/v2 + admin-override + revert-aware resolution,
+        /// not re-implemented here).
         /// </summary>
-        [HttpGet("Dashboard/Counts")]
-        public async Task<IActionResult> DashboardCounts([FromQuery] PendingApproverDTO Query)
+        [HttpGet("Dashboard/ItemCounts")]
+        public async Task<IActionResult> DashboardItemCounts([FromQuery] PendingApproverDTO Query)
         {
             try
             {
@@ -591,6 +592,7 @@ namespace Pupa.Controllers
                 }
                 if (User == null) throw new Exception("User not found");
 
+                var IsAdminUser = User.Role == "ADMIN";
                 var UsernameLower = User.Username.ToLower();
 
                 // ── Requester: documents THIS user created ───────────────────
@@ -603,27 +605,15 @@ namespace Pupa.Controllers
                 int ReqCancel = await db.Requisition.CountAsync(x =>
                     x.RequestBy == User.Username && (x.Status == "VOID" || x.Status == "REJECTED"));
 
-                int JrCreatedPending = await db.JobRequest.CountAsync(x =>
-                    x.Type == "PUPA" && x.CreatedBy == User.Username
-                    && x.Status == "Submitted" && x.ApprovalStatus == "Pending");
-                int JrCreatedDone = await db.JobRequest.CountAsync(x =>
-                    x.Type == "PUPA" && x.CreatedBy == User.Username && x.ApprovalStatus == "Approved");
-                int JrCreatedCancel = await db.JobRequest.CountAsync(x =>
-                    x.Type == "PUPA" && x.CreatedBy == User.Username && x.ApprovalStatus == "Rejected");
-
                 // ── Approver: documents awaiting/handled by THIS user ─────────
-                int ApproverItemPending = 0;
+                int ApproverPending;
                 {
                     var ItemPendingResult = await PendingApproval(new PendingApproverDTO { UserName = User.Username }) as OkObjectResult;
                     dynamic? Payload = ItemPendingResult?.Value;
-                    if (Payload != null && Payload.Success == true)
-                    {
-                        ApproverItemPending = (int)Payload.Data.TotalCount;
-                    }
+                    ApproverPending = (Payload != null && Payload.Success == true) ? (int)Payload.Data.TotalCount : 0;
                 }
-                int ApproverJobPending = await CountPendingJobRequestsForApprover(User);
 
-                int ApproverItemDone = await db.Requisition.CountAsync(x =>
+                int ApproverDone = await db.Requisition.CountAsync(x =>
                     ((x.ApprovedBy1 != null && x.ApprovedBy1.ToLower() == UsernameLower) ||
                      (x.ApprovedBy2 != null && x.ApprovedBy2.ToLower() == UsernameLower) ||
                      (x.ApprovedBy3 != null && x.ApprovedBy3.ToLower() == UsernameLower) ||
@@ -633,22 +623,74 @@ namespace Pupa.Controllers
                      (x.ApprovedBy7 != null && x.ApprovedBy7.ToLower() == UsernameLower))
                     && (x.RevertStatus == null || x.RevertStatus.ToLower() != "reverted")
                     && x.Status.ToLower() != "void" && x.Status.ToLower() != "rejected");
-                int ApproverJobDone = await db.JobRequest.CountAsync(x =>
-                    ((x.ApprovedBy1 != null && x.ApprovedBy1.ToLower() == UsernameLower) ||
-                     (x.ApprovedBy2 != null && x.ApprovedBy2.ToLower() == UsernameLower) ||
-                     (x.ApprovedBy3 != null && x.ApprovedBy3.ToLower() == UsernameLower) ||
-                     (x.ApprovedBy4 != null && x.ApprovedBy4.ToLower() == UsernameLower) ||
-                     (x.ApprovedBy5 != null && x.ApprovedBy5.ToLower() == UsernameLower) ||
-                     (x.ApprovedBy6 != null && x.ApprovedBy6.ToLower() == UsernameLower) ||
-                     (x.ApprovedBy7 != null && x.ApprovedBy7.ToLower() == UsernameLower))
-                    && x.ApprovalStatus.ToLower() != "rejected");
 
-                int ApproverItemCancel = await db.Requisition.CountAsync(x => x.RejectedBy == User.Username);
-                int ApproverJobCancel = await db.JobRequest.CountAsync(x => x.RejectedBy == User.Username);
+                int ApproverCancel = await db.Requisition.CountAsync(x => x.RejectedBy == User.Username);
 
-                int ApproverPending = ApproverItemPending + ApproverJobPending;
-                int ApproverDone = ApproverItemDone + ApproverJobDone;
-                int ApproverCancel = ApproverItemCancel + ApproverJobCancel;
+                // ── Approver: Reverted (new — previously computed client-side,
+                // v1-only). ADMIN sees every reverted document on their
+                // authorized vessels where they're actually one of the
+                // assigned approvers (any level); non-ADMIN sees only the ones
+                // they personally reverted.
+                int ApproverReverted = 0;
+                {
+                    var VesselIdsInScope = await db.UserVesselRel.AsNoTracking()
+                        .Where(x => x.UserID == User.ID)
+                        .Select(x => x.VesselID)
+                        .Distinct()
+                        .ToListAsync();
+
+                    if (VesselIdsInScope.Any())
+                    {
+                        var RevertedQuery = db.Requisition.AsNoTracking()
+                            .Where(x => x.VesselID.HasValue && VesselIdsInScope.Contains(x.VesselID.Value)
+                                && x.Approved == false
+                                && x.Revised != true
+                                && x.RevertStatus == "REVERTED"
+                                && x.Status.ToLower() != "void" && x.Status.ToLower() != "rejected");
+
+                        if (IsAdminUser)
+                        {
+                            var RevertedCandidates = await RevertedQuery
+                                .Where(x => x.LastRevertedBy != null)
+                                .Include(x => x.InventoryUser).ThenInclude(v => v!.Group)
+                                .ToListAsync();
+
+                            if (RevertedCandidates.Any())
+                            {
+                                var RelevantVesselGroupIds = RevertedCandidates
+                                    .Where(x => x.InventoryUser?.Group != null)
+                                    .Select(x => x.InventoryUser!.Group!.ID)
+                                    .Distinct()
+                                    .ToList();
+
+                                var ScopesV1 = await db.UserApprovalScope.AsNoTracking()
+                                    .Include(x => x.User)
+                                    .Where(x => RelevantVesselGroupIds.Contains(x.VesselGroupID.Value))
+                                    .ToListAsync();
+                                var ScopesV2 = await db.UserApprovalScope2.AsNoTracking()
+                                    .Include(x => x.User)
+                                    .Where(x => x.IsActive != false)
+                                    .ToListAsync();
+                                var FamilyMap = await db.StockFamily.AsNoTracking().ToListAsync();
+
+                                foreach (var r in RevertedCandidates)
+                                {
+                                    if (r.InventoryUser?.Group == null) continue;
+                                    var Family = FamilyMap.FirstOrDefault(x => x.FamilyID == r.CategoryID);
+                                    var Usernames = GetFullApproverUsernames(r, r.InventoryUser, Family, ScopesV1, ScopesV2);
+                                    if (Usernames.Contains(UsernameLower)) ApproverReverted++;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            ApproverReverted = await RevertedQuery.CountAsync(x =>
+                                x.LastRevertedBy != null && x.LastRevertedBy.ToLower() == UsernameLower);
+                        }
+                    }
+                }
+
+                int ApproverTotal = ApproverPending + ApproverDone + ApproverCancel + ApproverReverted;
 
                 return Ok(new
                 {
@@ -658,17 +700,18 @@ namespace Pupa.Controllers
                     {
                         Requester = new
                         {
-                            Pending = ReqPending + JrCreatedPending,
-                            Done = ReqDone + JrCreatedDone,
-                            Cancel = ReqCancel + JrCreatedCancel,
-                            Total = ReqPending + JrCreatedPending + ReqDone + JrCreatedDone + ReqCancel + JrCreatedCancel,
+                            Pending = ReqPending,
+                            Done = ReqDone,
+                            Cancel = ReqCancel,
+                            Total = ReqPending + ReqDone + ReqCancel,
                         },
                         Approver = new
                         {
                             Pending = ApproverPending,
                             Done = ApproverDone,
                             Cancel = ApproverCancel,
-                            Total = ApproverPending + ApproverDone + ApproverCancel,
+                            Reverted = ApproverReverted,
+                            Total = ApproverTotal,
                         }
                     }
                 });
@@ -682,6 +725,46 @@ namespace Pupa.Controllers
                     Data = (object?)null
                 });
             }
+        }
+
+        // Every username assigned as approver at ANY level (1-7) for
+        // [requisition] on [vessel] — used by the Dashboard's Reverted count
+        // to check "is this ADMIN actually part of the approval chain",
+        // dispatching on ApprovalRuleVersion like everywhere else in this
+        // file. Built on the same ResolveScopeCandidatesV1/V2 helpers the
+        // rest of the approver-resolution actions use, so it stays correct
+        // for both v1 and v2 vessels (the Dart version this replaces only
+        // ever queried UserApprovalScope — always empty for v2 vessels).
+        private HashSet<string> GetFullApproverUsernames(
+            Requisition requisition, InventoryUser vessel, StockFamily? family,
+            List<UserApprovalScope> scopesV1, List<UserApprovalScope2> scopesV2)
+        {
+            var usernames = new HashSet<string>();
+            bool hasFamily = family != null;
+            int? familyCategoryId = family?.StockCategoryID;
+            int? familyFamilyId = family?.FamilyID;
+            var scopesInGroup = scopesV1.Where(x => x.VesselGroupID == vessel.Group!.ID).ToList();
+
+            for (int level = 1; level <= 7; level++)
+            {
+                if (requisition.ApprovalRuleVersion == 2)
+                {
+                    var candidates = ResolveScopeCandidatesV2(scopesV2, vessel, familyCategoryId, familyFamilyId, level, requisition.Group, requisition.Department, requisition.SubDepartment);
+                    foreach (var c in candidates)
+                    {
+                        if (!string.IsNullOrEmpty(c.User?.Username)) usernames.Add(c.User!.Username!.ToLower());
+                    }
+                }
+                else
+                {
+                    var candidates = ResolveScopeCandidatesV1(scopesInGroup, level, vessel.ID, hasFamily, familyCategoryId, familyFamilyId, requisition.Department, requisition.SubDepartment);
+                    foreach (var c in candidates)
+                    {
+                        if (!string.IsNullOrEmpty(c.User?.Username)) usernames.Add(c.User!.Username!.ToLower());
+                    }
+                }
+            }
+            return usernames;
         }
 
         /// <summary>
