@@ -148,6 +148,91 @@ namespace Pupa.BusinessObjects.Beesuite
             set { if (_Remarks == value) return; OnPropertyChanging(); _Remarks = value; OnPropertyChanged(); }
         }
 
+        // ── Per-item approval quantities (mirrors RequisitionDetail) ──────────────
+        // Job Request approval works like Item Request: the requested quantity is the
+        // baseline, and each approver on the document-level chain may adjust the
+        // approved quantity per item. QtyApproved holds the current/running value;
+        // QtyApproved1..7 snapshot the value each approval level signed off on.
+        private decimal? _QtyRequest = 0;
+        [Column("QtyRequest")]
+        public virtual decimal? QtyRequest
+        {
+            get => _QtyRequest;
+            set { if (_QtyRequest == value) return; OnPropertyChanging(); _QtyRequest = value; OnPropertyChanged(); }
+        }
+
+        private decimal? _QtyApproved = 0;
+        [Column("QtyApproved")]
+        public virtual decimal? QtyApproved
+        {
+            get => _QtyApproved;
+            set { if (_QtyApproved == value) return; OnPropertyChanging(); _QtyApproved = value; OnPropertyChanged(); }
+        }
+
+        private decimal? _QtyApproved1 { get; set; }
+        [Column("QtyApproved1")]
+        public virtual decimal? QtyApproved1
+        {
+            get => _QtyApproved1;
+            set { if (_QtyApproved1 == value) return; OnPropertyChanging(); _QtyApproved1 = value; OnPropertyChanged(); }
+        }
+
+        private decimal? _QtyApproved2 { get; set; }
+        [Column("QtyApproved2")]
+        public virtual decimal? QtyApproved2
+        {
+            get => _QtyApproved2;
+            set { if (_QtyApproved2 == value) return; OnPropertyChanging(); _QtyApproved2 = value; OnPropertyChanged(); }
+        }
+
+        private decimal? _QtyApproved3 { get; set; }
+        [Column("QtyApproved3")]
+        public virtual decimal? QtyApproved3
+        {
+            get => _QtyApproved3;
+            set { if (_QtyApproved3 == value) return; OnPropertyChanging(); _QtyApproved3 = value; OnPropertyChanged(); }
+        }
+
+        private decimal? _QtyApproved4 { get; set; }
+        [Column("QtyApproved4")]
+        public virtual decimal? QtyApproved4
+        {
+            get => _QtyApproved4;
+            set { if (_QtyApproved4 == value) return; OnPropertyChanging(); _QtyApproved4 = value; OnPropertyChanged(); }
+        }
+
+        private decimal? _QtyApproved5 { get; set; }
+        [Column("QtyApproved5")]
+        public virtual decimal? QtyApproved5
+        {
+            get => _QtyApproved5;
+            set { if (_QtyApproved5 == value) return; OnPropertyChanging(); _QtyApproved5 = value; OnPropertyChanged(); }
+        }
+
+        private decimal? _QtyApproved6 { get; set; }
+        [Column("QtyApproved6")]
+        public virtual decimal? QtyApproved6
+        {
+            get => _QtyApproved6;
+            set { if (_QtyApproved6 == value) return; OnPropertyChanging(); _QtyApproved6 = value; OnPropertyChanged(); }
+        }
+
+        private decimal? _QtyApproved7 { get; set; }
+        [Column("QtyApproved7")]
+        public virtual decimal? QtyApproved7
+        {
+            get => _QtyApproved7;
+            set { if (_QtyApproved7 == value) return; OnPropertyChanging(); _QtyApproved7 = value; OnPropertyChanged(); }
+        }
+
+        private int? _UOMLevel { get; set; }
+        [Column("UOMLevel")]
+        public virtual int? UOMLevel
+        {
+            get => _UOMLevel;
+            set { if (_UOMLevel == value) return; OnPropertyChanging(); _UOMLevel = value; OnPropertyChanged(); }
+        }
+
         [ForeignKey("ItemID")]
         public virtual Item? Item { get; set;  }
 

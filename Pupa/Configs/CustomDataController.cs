@@ -86,6 +86,13 @@ namespace Pupa.Configs
             {
                 _db.Set<TEntity>().Add(value);
                 await _db.SaveChangesAsync();
+
+                if (value is UserApprovalScope2 v2Created && v2Created.VesselID != null)
+                {
+                    await SyncLegacyMirrorForVessel(v2Created.VesselID.Value, v2Created.Level);
+                    await _db.SaveChangesAsync();
+                }
+
                 return Created(value);
             }
             catch (Exception e)
@@ -108,6 +115,13 @@ namespace Pupa.Configs
             }
             try
             {
+                // Captured BEFORE the patch so a PATCH that moves a
+                // UserApprovalScope2 row to/from a different VesselID or
+                // Level re-syncs BOTH the old and new vessel+level's mirror
+                // (see SyncLegacyMirrorForVessel below).
+                int? preVesselId = (entity as UserApprovalScope2)?.VesselID;
+                short? preLevel = (entity as UserApprovalScope2)?.Level;
+
                 var changedPropertyNames = ApplyPatch(entity, patch);
 
                 var patchUpdatesRevertStatus = changedPropertyNames
@@ -124,6 +138,21 @@ namespace Pupa.Configs
                 }
 
                 await _db.SaveChangesAsync();
+
+                if (entity is UserApprovalScope2 v2Patched)
+                {
+                    if (preVesselId != null)
+                    {
+                        await SyncLegacyMirrorForVessel(preVesselId.Value, preLevel);
+                    }
+                    if (v2Patched.VesselID != null &&
+                        (v2Patched.VesselID != preVesselId || v2Patched.Level != preLevel))
+                    {
+                        await SyncLegacyMirrorForVessel(v2Patched.VesselID.Value, v2Patched.Level);
+                    }
+                    await _db.SaveChangesAsync();
+                }
+
                 return Updated(entity);
             }
             catch (Exception e)
@@ -227,13 +256,136 @@ namespace Pupa.Configs
             }
             try
             {
+                // Captured before removal — see SyncLegacyMirrorForVessel.
+                int? deletedVesselId = (entity as UserApprovalScope2)?.VesselID;
+                short? deletedLevel = (entity as UserApprovalScope2)?.Level;
+
                 _db.Set<TEntity>().Remove(entity);
                 await _db.SaveChangesAsync();
+
+                if (deletedVesselId != null)
+                {
+                    await SyncLegacyMirrorForVessel(deletedVesselId.Value, deletedLevel);
+                    await _db.SaveChangesAsync();
+                }
+
                 return NoContent();
             }
             catch (Exception e)
             {
                 return BadRequest(e.Message);
+            }
+        }
+
+        /// <summary>
+        /// Keeps a legacy UserApprovalScope (v1) row in sync with a
+        /// full-wildcard UserApprovalScope2 (v2) row scoped to one specific
+        /// vessel — so the ALREADY-PUBLISHED mobile app (whose Job Request
+        /// approver lookup only ever reads UserApprovalScope, hardcoding
+        /// StockCategoryID/StockFamilyID to -1, and never reads
+        /// UserApprovalScope2 at all) picks up a v2 "All Categories, All
+        /// Families" rule without needing an app update/store release.
+        ///
+        /// Deliberately narrow scope:
+        ///  - Only mirrors when the v2 row is a full wildcard for stock
+        ///    (StockCategoryID AND StockFamilyID both null). A
+        ///    category-specific v2 rule can never be represented this way —
+        ///    the old mobile code discards any non-(-1) row for Job
+        ///    Requests by design (hardcoded client logic); no backend/data
+        ///    trick can change that without a new app build.
+        ///  - Only mirrors when the v2 row targets one specific VesselID
+        ///    (not a whole VesselGroupID) — a group-wide v2 rule would need
+        ///    one v1 row per CompanyDB actually used in that group, which
+        ///    this method doesn't attempt.
+        /// Re-derives (rather than diffs) the mirror row for
+        /// [vesselId]/[level] from whatever currently-active v2 row best
+        /// matches, so edits/deletes/reactivations on the v2 side stay
+        /// correctly reflected without separate add/remove bookkeeping.
+        ///
+        /// KNOWN SIDE EFFECT: because UserApprovalScope's StockCategoryID/
+        /// StockFamilyID = -1 is a wildcard for EVERY consumer of that table
+        /// (not just Job Requests), this mirror row also becomes a
+        /// fallback approver for Item Requisitions on this vessel+level if
+        /// the primary backend resolver (/User/Approver) is ever
+        /// unreachable and the old mobile app falls back to local
+        /// UserApprovalScope matching. Acceptable for now — vessels here
+        /// are ApprovalRuleVersion 2 already, so that fallback path is not
+        /// the normal one — but worth knowing before mirroring is applied
+        /// more broadly.
+        /// </summary>
+        private async Task SyncLegacyMirrorForVessel(int vesselId, short? level)
+        {
+            if (level == null) return;
+
+            // .Include(Group) is required here: InventoryUser.GroupID is a
+            // legacy scalar column that is NOT the referenced group's PK (it
+            // repeats across multiple real InventoryUserGroup rows in
+            // different companies — e.g. GroupID=6 exists on 4 different
+            // groups). Every matcher (ResolveApprovers, PendingApproval,
+            // MatchesV2) compares UserApprovalScope(2).VesselGroupID against
+            // Vessel.Group.ID — the navigated PK — not Vessel.GroupID.
+            // Confirmed against real data: MV. AMETHYST has GroupID=6 but its
+            // actual InventoryUserGroup.ID is 50.
+            var vessel = await _db.InventoryUser.AsNoTracking()
+                .Include(x => x.Group)
+                .FirstOrDefaultAsync(x => x.ID == vesselId);
+            if (vessel?.Group == null || string.IsNullOrEmpty(vessel.DB))
+            {
+                // Can't resolve what the old mobile query needs (VesselGroupID +
+                // CompanyDB) — nothing safe to mirror.
+                return;
+            }
+
+            // Most-specific currently-active v2 row that is STILL a full
+            // wildcard for this exact vessel+level (mirrors the resolver's own
+            // Specificity ordering, so this stays correct even if a
+            // more-specific non-wildcard row is later added at the same level —
+            // that row would win in ResolveApprovers, and should stop being
+            // mirrored here too).
+            var stillWildcard = await _db.UserApprovalScope2.AsNoTracking()
+                .Where(s => s.IsActive != false && s.Level == level && s.VesselID == vesselId
+                         && s.StockCategoryID == null && s.StockFamilyID == null)
+                .OrderByDescending(s => s.Specificity).ThenBy(s => s.ID)
+                .FirstOrDefaultAsync();
+
+            // NOTE: the old mobile app's local match compares this column
+            // against JobRequest.VesselInventoryUserRowID directly — which,
+            // despite the name, holds InventoryUser.ID (the PK, == vesselId
+            // here), NOT InventoryUser.InventoryUserID (a separate, unrelated
+            // legacy column). Confirmed against real data before writing this.
+            var mirrorRow = await _db.UserApprovalScope
+                .FirstOrDefaultAsync(r => r.InventoryUserID == vesselId
+                                       && r.VesselGroupID == vessel.Group.ID
+                                       && r.CompanyDB == vessel.DB
+                                       && r.StockCategoryID == -1 && r.StockFamilyID == -1
+                                       && r.Level == level
+                                       && r.Department == null && r.SubDepartment == null);
+
+            if (stillWildcard?.UserID == null)
+            {
+                if (mirrorRow != null) _db.UserApprovalScope.Remove(mirrorRow);
+                return;
+            }
+
+            if (mirrorRow == null)
+            {
+                _db.UserApprovalScope.Add(new UserApprovalScope
+                {
+                    UserID = stillWildcard.UserID,
+                    CompanyDB = vessel.DB,
+                    VesselGroupID = vessel.Group.ID,
+                    InventoryUserID = vesselId,
+                    StockCategoryID = -1,
+                    StockFamilyID = -1,
+                    Level = level,
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now,
+                });
+            }
+            else if (mirrorRow.UserID != stillWildcard.UserID)
+            {
+                mirrorRow.UserID = stillWildcard.UserID;
+                mirrorRow.UpdatedAt = DateTime.Now;
             }
         }
     }

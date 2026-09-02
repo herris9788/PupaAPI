@@ -13,6 +13,8 @@ namespace Pupa.BusinessObjects.Beesuite
         private string _fieldLabel = string.Empty;
         private FieldType _fieldType = FieldType.Text;
         private bool _isRequired;
+        private bool _isVisible = true;
+        private bool _isReadOnly;
         private string? _options;
         private int _sortOrder;
 
@@ -59,6 +61,18 @@ namespace Pupa.BusinessObjects.Beesuite
         {
             get => _isRequired;
             set { if (_isRequired == value) return; OnPropertyChanging(); _isRequired = value; OnPropertyChanged(); }
+        }
+
+        public virtual bool IsVisible
+        {
+            get => _isVisible;
+            set { if (_isVisible == value) return; OnPropertyChanging(); _isVisible = value; OnPropertyChanged(); }
+        }
+
+        public virtual bool IsReadOnly
+        {
+            get => _isReadOnly;
+            set { if (_isReadOnly == value) return; OnPropertyChanging(); _isReadOnly = value; OnPropertyChanged(); }
         }
 
         /// <summary>
