@@ -974,6 +974,76 @@ namespace Pupa.BusinessObjects.Beesuite
             }
         }
 
+        private string? _SourceServiceReportNo { get; set; }
+        /// <summary>When this Item Request was auto-created from a Service Report's
+        /// technician part recommendations (see _autoCreateIR in the app), the
+        /// source report's ReportNo — e.g. "SRBERG26080003". NULL for a normally
+        /// created IR. Populated at creation time so the Review &amp; Approve page
+        /// can link back to the report without parsing the Remarks free-text.</summary>
+        [StringLength(200)]
+        public virtual string? SourceServiceReportNo
+        {
+            get => _SourceServiceReportNo;
+            set
+            {
+                if (_SourceServiceReportNo == value) return;
+                OnPropertyChanging();
+                _SourceServiceReportNo = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private int? _SourceServiceReportID { get; set; }
+        /// <summary>Companion to <see cref="SourceServiceReportNo"/>: the BeesuiteGO
+        /// ServiceReport.ID when the client knows it, so the link survives a later
+        /// report-number change. NULL for a normally created IR.</summary>
+        public virtual int? SourceServiceReportID
+        {
+            get => _SourceServiceReportID;
+            set
+            {
+                if (_SourceServiceReportID == value) return;
+                OnPropertyChanging();
+                _SourceServiceReportID = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private string? _SourceJobRequestNo { get; set; }
+        /// <summary>When this Item Request was auto-created from a Repair Job
+        /// Request's pre-inspection checklist (see auto_ir_service.go in
+        /// BeesuiteGO), the source JobRequest's ReportNo — e.g. "JRBERG26080003".
+        /// NULL for a normally created IR. Lets the Review &amp; Approve page link
+        /// back to the Job Request / Service Order without walking
+        /// JobRequest.AdditionalData.LinkedRequisitions.</summary>
+        [StringLength(200)]
+        public virtual string? SourceJobRequestNo
+        {
+            get => _SourceJobRequestNo;
+            set
+            {
+                if (_SourceJobRequestNo == value) return;
+                OnPropertyChanging();
+                _SourceJobRequestNo = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private int? _SourceJobRequestID { get; set; }
+        /// <summary>Companion to <see cref="SourceJobRequestNo"/>: the BeesuiteGO
+        /// JobRequest.ID when known. NULL for a normally created IR.</summary>
+        public virtual int? SourceJobRequestID
+        {
+            get => _SourceJobRequestID;
+            set
+            {
+                if (_SourceJobRequestID == value) return;
+                OnPropertyChanging();
+                _SourceJobRequestID = value;
+                OnPropertyChanged();
+            }
+        }
+
         [NotMapped]
         public virtual ObservableCollection<LogActivity> Logs { get; set; } = new ObservableCollection<LogActivity>();
         public virtual ObservableCollection<RequisitionEngineNumber> EngineNumbers { get; set; }
