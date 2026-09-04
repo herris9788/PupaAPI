@@ -559,25 +559,26 @@ namespace Pupa.Controllers
         }
 
         /// <summary>
-        /// One dedicated Item-Request-only count for the Dashboard — both the
-        /// "documents I created" (Requester) and "documents awaiting my
-        /// sign-off" (Approver) views, each broken down Pending/Done/Cancel/
-        /// Reverted (+Total). Job Request is deliberately NOT included here —
-        /// its dashboard numbers stay cheap raw $count queries client-side
-        /// (JobRequest.ApprovalStatus is a plain string, no chain-walking
-        /// needed), so this endpoint only carries the expensive Item Request
-        /// half (which previously cost 6+ separate OData calls plus a
-        /// per-item, per-vessel approval-chain walk in Dart for Pending and
-        /// Reverted — see DashboardWebContent.dart's old
-        /// _fetchApproverStats/ApprovalLogicHelper.getApproverChain, which was
-        /// also v1-only and silently returned an empty chain for v2 vessels).
+        /// One dedicated Dashboard summary call — both the "documents I
+        /// created" (Requester) and "documents awaiting my sign-off"
+        /// (Approver) views, each broken down Pending/Done/Cancel/Reverted
+        /// (+Total), covering Item Request (Requisition) AND Job Request
+        /// combined into the SAME numbers. Replaces the old Item-Request-only
+        /// Dashboard/ItemCounts endpoint AND the separate raw client-side
+        /// /odata/JobRequest $count calls Dart/React used to make on top of
+        /// it (DashboardWebContent.dart's old _fetchRequisitionStats/
+        /// _fetchApproverStats) — including a Job Request Reverted count
+        /// that raw client-side approach never had at all (Job Request's own
+        /// dashboard numbers were only ever Pending/Done/Cancel), which is
+        /// why a reverted Job Request never showed up on the Dashboard.
         ///
-        /// Approver.Pending reuses the EXISTING PendingApproval action
-        /// in-process (same v1/v2 + admin-override + revert-aware resolution,
-        /// not re-implemented here).
+        /// Approver.Pending reuses the EXISTING PendingApproval action (Item)
+        /// and CountPendingJobRequestsForApprover (Job) in-process — same
+        /// v1/v2 + admin-override + revert-aware resolution, not
+        /// re-implemented here.
         /// </summary>
-        [HttpGet("Dashboard/ItemCounts")]
-        public async Task<IActionResult> DashboardItemCounts([FromQuery] PendingApproverDTO Query)
+        [HttpGet("Dashboard/Summary")]
+        public async Task<IActionResult> DashboardSummary([FromQuery] PendingApproverDTO Query)
         {
             try
             {
@@ -605,6 +606,19 @@ namespace Pupa.Controllers
                 int ReqCancel = await db.Requisition.CountAsync(x =>
                     x.RequestBy == User.Username && (x.Status == "VOID" || x.Status == "REJECTED"));
 
+                // Job Request — same CreatedBy/Status/ApprovalStatus filters
+                // the old client-side raw OData calls used, just moved
+                // server-side.
+                int JobReqPending = await db.JobRequest.CountAsync(x =>
+                    x.Type == "PUPA" && x.CreatedBy != null && x.CreatedBy.ToLower() == UsernameLower
+                    && x.Status == "Submitted" && x.ApprovalStatus == "Pending");
+                int JobReqDone = await db.JobRequest.CountAsync(x =>
+                    x.Type == "PUPA" && x.CreatedBy != null && x.CreatedBy.ToLower() == UsernameLower
+                    && x.ApprovalStatus == "Approved");
+                int JobReqCancel = await db.JobRequest.CountAsync(x =>
+                    x.Type == "PUPA" && x.CreatedBy != null && x.CreatedBy.ToLower() == UsernameLower
+                    && x.ApprovalStatus == "Rejected");
+
                 // ── Approver: documents awaiting/handled by THIS user ─────────
                 int ApproverPending;
                 {
@@ -626,19 +640,38 @@ namespace Pupa.Controllers
 
                 int ApproverCancel = await db.Requisition.CountAsync(x => x.RejectedBy == User.Username);
 
-                // ── Approver: Reverted (new — previously computed client-side,
-                // v1-only). ADMIN sees every reverted document on their
-                // authorized vessels where they're actually one of the
-                // assigned approvers (any level); non-ADMIN sees only the ones
-                // they personally reverted.
+                // Job Request Done/Cancel — same ApprovedByN / RejectedBy
+                // filters the old client-side raw calls used.
+                int JobApproverDone = await db.JobRequest.CountAsync(x =>
+                    ((x.ApprovedBy1 != null && x.ApprovedBy1.ToLower() == UsernameLower) ||
+                     (x.ApprovedBy2 != null && x.ApprovedBy2.ToLower() == UsernameLower) ||
+                     (x.ApprovedBy3 != null && x.ApprovedBy3.ToLower() == UsernameLower) ||
+                     (x.ApprovedBy4 != null && x.ApprovedBy4.ToLower() == UsernameLower) ||
+                     (x.ApprovedBy5 != null && x.ApprovedBy5.ToLower() == UsernameLower) ||
+                     (x.ApprovedBy6 != null && x.ApprovedBy6.ToLower() == UsernameLower) ||
+                     (x.ApprovedBy7 != null && x.ApprovedBy7.ToLower() == UsernameLower))
+                    && x.ApprovalStatus.ToLower() != "rejected");
+                int JobApproverCancel = await db.JobRequest.CountAsync(x =>
+                    x.RejectedBy != null && x.RejectedBy.ToLower() == UsernameLower);
+
+                // Job Request Pending — reuses the existing (previously
+                // unwired) CountPendingJobRequestsForApprover helper, same
+                // ResolveApprovers-based, v1/v2-aware, tied-approver-aware
+                // resolution Pending Approvals itself already uses.
+                int JobApproverPending = await CountPendingJobRequestsForApprover(User);
+
+                var VesselIdsInScope = await db.UserVesselRel.AsNoTracking()
+                    .Where(x => x.UserID == User.ID)
+                    .Select(x => x.VesselID)
+                    .Distinct()
+                    .ToListAsync();
+
+                // ── Approver: Reverted (Item) — ADMIN sees every reverted
+                // document on their authorized vessels where they're actually
+                // one of the assigned approvers (any level); non-ADMIN sees
+                // only the ones they personally reverted.
                 int ApproverReverted = 0;
                 {
-                    var VesselIdsInScope = await db.UserVesselRel.AsNoTracking()
-                        .Where(x => x.UserID == User.ID)
-                        .Select(x => x.VesselID)
-                        .Distinct()
-                        .ToListAsync();
-
                     if (VesselIdsInScope.Any())
                     {
                         var RevertedQuery = db.Requisition.AsNoTracking()
@@ -675,6 +708,17 @@ namespace Pupa.Controllers
 
                                 foreach (var r in RevertedCandidates)
                                 {
+                                    // An ADMIN who personally reverted this document counts
+                                    // it as theirs even if they aren't formally scoped as an
+                                    // approver for this vessel-group/family (an admin override
+                                    // revert, not a normal scoped approval) — otherwise their
+                                    // own reverted actions silently never showed up on their
+                                    // own Dashboard.
+                                    if (r.LastRevertedBy != null && r.LastRevertedBy.ToLower() == UsernameLower)
+                                    {
+                                        ApproverReverted++;
+                                        continue;
+                                    }
                                     if (r.InventoryUser?.Group == null) continue;
                                     var Family = FamilyMap.FirstOrDefault(x => x.FamilyID == r.CategoryID);
                                     var Usernames = GetFullApproverUsernames(r, r.InventoryUser, Family, ScopesV1, ScopesV2);
@@ -690,7 +734,84 @@ namespace Pupa.Controllers
                     }
                 }
 
-                int ApproverTotal = ApproverPending + ApproverDone + ApproverCancel + ApproverReverted;
+                // ── Approver: Job Request Reverted (NEW — never existed
+                // before; this is the actual "reverted doesn't show up" gap).
+                // Same ADMIN/non-ADMIN split as Item Reverted above, but
+                // ADMIN membership is checked via ResolveApprovers (Job
+                // Request's own approver resolution, keyed by
+                // VesselInventoryUserRowID + the job's Category — see
+                // CountPendingJobRequestsForApprover) instead of
+                // GetFullApproverUsernames, which only understands
+                // Requisition.
+                int JobApproverReverted = 0;
+                {
+                    if (VesselIdsInScope.Any())
+                    {
+                        var RevertedJobsQuery = db.JobRequest.AsNoTracking()
+                            .Include(j => j.Jobs).ThenInclude(jb => jb.JobDetails)
+                            .Where(j => j.VesselInventoryUserRowID.HasValue && VesselIdsInScope.Contains(j.VesselInventoryUserRowID.Value)
+                                && j.Approved == false
+                                && j.Revised != true
+                                && j.RevertStatus == "REVERTED"
+                                && j.ApprovalStatus.ToLower() != "rejected");
+
+                        if (IsAdminUser)
+                        {
+                            var RevertedJobCandidates = await RevertedJobsQuery
+                                .Where(j => j.LastRevertedBy != null)
+                                .ToListAsync();
+
+                            foreach (var job in RevertedJobCandidates)
+                            {
+                                // Same override rule as Item Reverted above — an ADMIN who
+                                // personally reverted this job counts it as theirs even if
+                                // not formally in the resolved approval chain.
+                                if (job.LastRevertedBy != null && job.LastRevertedBy.ToLower() == UsernameLower)
+                                {
+                                    JobApproverReverted++;
+                                    continue;
+                                }
+                                try
+                                {
+                                    var Category = job.Jobs?.FirstOrDefault()?.JobDetails?.FirstOrDefault()?.Category;
+                                    var ResolveResult = await ResolveApprovers(new ResolveApproversDTO
+                                    {
+                                        VesselID = job.VesselInventoryUserRowID,
+                                        Category = Category,
+                                    }) as OkObjectResult;
+                                    dynamic? Payload = ResolveResult?.Value;
+                                    if (Payload == null || Payload.Success != true) continue;
+
+                                    bool IsInChain = false;
+                                    foreach (dynamic Item in Payload.Data.Items)
+                                    {
+                                        List<string> Unames = Item.Usernames;
+                                        if (Unames.Any(u => !string.IsNullOrEmpty(u) && u.ToLower() == UsernameLower))
+                                        {
+                                            IsInChain = true;
+                                            break;
+                                        }
+                                    }
+                                    if (IsInChain) JobApproverReverted++;
+                                }
+                                catch
+                                {
+                                    // One bad Job Request shouldn't take down the whole count.
+                                }
+                            }
+                        }
+                        else
+                        {
+                            JobApproverReverted = await RevertedJobsQuery.CountAsync(j =>
+                                j.LastRevertedBy != null && j.LastRevertedBy.ToLower() == UsernameLower);
+                        }
+                    }
+                }
+
+                int ApproverTotal = (ApproverPending + JobApproverPending)
+                    + (ApproverDone + JobApproverDone)
+                    + (ApproverCancel + JobApproverCancel)
+                    + (ApproverReverted + JobApproverReverted);
 
                 return Ok(new
                 {
@@ -700,17 +821,17 @@ namespace Pupa.Controllers
                     {
                         Requester = new
                         {
-                            Pending = ReqPending,
-                            Done = ReqDone,
-                            Cancel = ReqCancel,
-                            Total = ReqPending + ReqDone + ReqCancel,
+                            Pending = ReqPending + JobReqPending,
+                            Done = ReqDone + JobReqDone,
+                            Cancel = ReqCancel + JobReqCancel,
+                            Total = ReqPending + ReqDone + ReqCancel + JobReqPending + JobReqDone + JobReqCancel,
                         },
                         Approver = new
                         {
-                            Pending = ApproverPending,
-                            Done = ApproverDone,
-                            Cancel = ApproverCancel,
-                            Reverted = ApproverReverted,
+                            Pending = ApproverPending + JobApproverPending,
+                            Done = ApproverDone + JobApproverDone,
+                            Cancel = ApproverCancel + JobApproverCancel,
+                            Reverted = ApproverReverted + JobApproverReverted,
                             Total = ApproverTotal,
                         }
                     }
