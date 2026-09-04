@@ -235,7 +235,7 @@ namespace Pupa.Controllers
                     {
                         Items = ApprovalMatrix,
                         TotalCount = ApprovalMatrix.Count,
-                        Offset = 1,
+                        Offset = 0,
                         Limit = ApprovalMatrix.Count
                     }
                 });
@@ -1042,7 +1042,7 @@ namespace Pupa.Controllers
                     {
                         Success = true,
                         Message = "OK",
-                        Data = new { Items = new List<object>(), TotalCount = 0, Offset = 1, Limit = 0 }
+                        Data = new { Items = new List<object>(), TotalCount = 0, Offset = 0, Limit = 0 }
                     });
                 }
 
@@ -1305,7 +1305,7 @@ namespace Pupa.Controllers
                     {
                         Items = PendingList,
                         TotalCount = PendingList.Count,
-                        Offset = 1,
+                        Offset = 0,
                         Limit = PendingList.Count
                     }
                 });
@@ -1399,7 +1399,7 @@ namespace Pupa.Controllers
                     {
                         Items = DoneList,
                         TotalCount = DoneList.Count,
-                        Offset = 1,
+                        Offset = 0,
                         Limit = DoneList.Count
                     }
                 });
