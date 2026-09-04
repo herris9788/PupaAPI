@@ -624,7 +624,29 @@ namespace Pupa.Controllers
                 {
                     var ItemPendingResult = await PendingApproval(new PendingApproverDTO { UserName = User.Username }) as OkObjectResult;
                     dynamic? Payload = ItemPendingResult?.Value;
-                    ApproverPending = (Payload != null && Payload.Success == true) ? (int)Payload.Data.TotalCount : 0;
+                    if (Payload != null && Payload.Success == true)
+                    {
+                        // Payload.Data.TotalCount also counts "admin oversight" entries
+                        // (IsAdminOverride) — documents where this ADMIN isn't literally
+                        // the next required approver but can act anyway. Every other
+                        // "pending for me" surface in the app (Track Item, the Pending
+                        // Approvals detail sheet's own list, the Approvals page badges —
+                        // all via PendingApprovalsHelper.fetchPendingItemsForUser)
+                        // explicitly excludes those, since they aren't genuinely this
+                        // user's turn. Counting them here made the Dashboard number
+                        // (and this same value reused for the detail sheet's header)
+                        // disagree with that list by exactly the admin-override count.
+                        int Count = 0;
+                        foreach (dynamic Item in Payload.Data.Items)
+                        {
+                            if (Item.IsAdminOverride != true) Count++;
+                        }
+                        ApproverPending = Count;
+                    }
+                    else
+                    {
+                        ApproverPending = 0;
+                    }
                 }
 
                 int ApproverDone = await db.Requisition.CountAsync(x =>
