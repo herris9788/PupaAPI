@@ -626,20 +626,25 @@ namespace Pupa.Controllers
                     dynamic? Payload = ItemPendingResult?.Value;
                     if (Payload != null && Payload.Success == true)
                     {
-                        // Payload.Data.TotalCount also counts "admin oversight" entries
-                        // (IsAdminOverride) — documents where this ADMIN isn't literally
-                        // the next required approver but can act anyway. Every other
-                        // "pending for me" surface in the app (Track Item, the Pending
-                        // Approvals detail sheet's own list, the Approvals page badges —
-                        // all via PendingApprovalsHelper.fetchPendingItemsForUser)
-                        // explicitly excludes those, since they aren't genuinely this
-                        // user's turn. Counting them here made the Dashboard number
-                        // (and this same value reused for the detail sheet's header)
-                        // disagree with that list by exactly the admin-override count.
+                        // Payload.Data.TotalCount also counts two kinds of entries that
+                        // don't belong in "Pending":
+                        //  - IsAdminOverride: documents where this ADMIN isn't literally
+                        //    the next required approver but can act anyway (oversight).
+                        //  - IsReverted: a reverted document PendingApproval always keeps
+                        //    visible (to any ADMIN, and to whoever reverted it) even while
+                        //    Approved eq false — but it already has its own home in
+                        //    ApproverReverted below, so counting it here too would show it
+                        //    in both buckets at once.
+                        // Every "pending for me" surface in the app (Track Item, the
+                        // Pending Approvals detail sheet's own list, the Approvals page
+                        // badges — all via PendingApprovalsHelper.fetchPendingItemsForUser)
+                        // already excludes both, since neither is genuinely "awaiting my
+                        // turn". Match that here so the Dashboard number (and this same
+                        // value reused for the detail sheet's header) agrees with it.
                         int Count = 0;
                         foreach (dynamic Item in Payload.Data.Items)
                         {
-                            if (Item.IsAdminOverride != true) Count++;
+                            if (Item.IsAdminOverride != true && Item.IsReverted != true) Count++;
                         }
                         ApproverPending = Count;
                     }
