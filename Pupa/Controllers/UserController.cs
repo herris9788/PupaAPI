@@ -1311,6 +1311,10 @@ namespace Pupa.Controllers
                     {
                         Requisition.ID,
                         Requisition.RequisitionNumber,
+                        // Lets the Approvals list page (React Webview) sort vessels by
+                        // newest pending order without a separate full-Requisition
+                        // fetch just for this one field.
+                        Requisition.Date,
                         PendingLevel = Level,
                         Requisition.Status,
                         Requisition.RevertStatus,
