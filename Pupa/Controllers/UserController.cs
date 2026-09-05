@@ -558,17 +558,246 @@ namespace Pupa.Controllers
             }
         }
 
+        // Item Request (Requisition)-only Requester+Approver
+        // Pending/Done/Cancel/Reverted tallies — shared by both
+        // DashboardSummary (which adds Job Request numbers on top) and the
+        // legacy DashboardItemCounts endpoint (kept for app builds still on
+        // it — see DashboardItemCounts below). Pulling this into one helper
+        // means both endpoints share the exact same bug fixes (e.g. the
+        // IsAdminOverride/IsReverted exclusion in ApproverPending) instead of
+        // silently drifting apart.
+        private sealed class ItemDashboardCounts
+        {
+            public int ReqPending, ReqDone, ReqCancel;
+            public int ApproverPending, ApproverDone, ApproverCancel, ApproverReverted;
+        }
+
+        private async Task<ItemDashboardCounts> ComputeItemDashboardCounts(User User)
+        {
+            var IsAdminUser = User.Role == "ADMIN";
+            var UsernameLower = User.Username.ToLower();
+
+            // ── Requester: documents THIS user created ───────────────────
+            int ReqPending = await db.Requisition.CountAsync(x =>
+                x.RequestBy == User.Username && x.Status == "PENDING" && x.ApprovedFromApp != true);
+            int ReqDone = await db.Requisition.CountAsync(x =>
+                x.RequestBy == User.Username
+                && (x.Approved == true || (x.ApprovedBy7 != null && x.ApprovedBy7 != ""))
+                && x.Status != "VOID" && x.Status != "REJECTED");
+            int ReqCancel = await db.Requisition.CountAsync(x =>
+                x.RequestBy == User.Username && (x.Status == "VOID" || x.Status == "REJECTED"));
+
+            // ── Approver: documents awaiting/handled by THIS user ─────────
+            int ApproverPending;
+            {
+                var ItemPendingResult = await PendingApproval(new PendingApproverDTO { UserName = User.Username }) as OkObjectResult;
+                dynamic? Payload = ItemPendingResult?.Value;
+                if (Payload != null && Payload.Success == true)
+                {
+                    // Payload.Data.TotalCount also counts two kinds of entries that
+                    // don't belong in "Pending":
+                    //  - IsAdminOverride: documents where this ADMIN isn't literally
+                    //    the next required approver but can act anyway (oversight).
+                    //  - IsReverted: a reverted document PendingApproval always keeps
+                    //    visible (to any ADMIN, and to whoever reverted it) even while
+                    //    Approved eq false — but it already has its own home in
+                    //    ApproverReverted below, so counting it here too would show it
+                    //    in both buckets at once.
+                    // Every "pending for me" surface in the app (Track Item, the
+                    // Pending Approvals detail sheet's own list, the Approvals page
+                    // badges — all via PendingApprovalsHelper.fetchPendingItemsForUser)
+                    // already excludes both, since neither is genuinely "awaiting my
+                    // turn". Match that here so the Dashboard number (and this same
+                    // value reused for the detail sheet's header) agrees with it.
+                    int Count = 0;
+                    foreach (dynamic Item in Payload.Data.Items)
+                    {
+                        if (Item.IsAdminOverride != true && Item.IsReverted != true) Count++;
+                    }
+                    ApproverPending = Count;
+                }
+                else
+                {
+                    ApproverPending = 0;
+                }
+            }
+
+            int ApproverDone = await db.Requisition.CountAsync(x =>
+                ((x.ApprovedBy1 != null && x.ApprovedBy1.ToLower() == UsernameLower) ||
+                 (x.ApprovedBy2 != null && x.ApprovedBy2.ToLower() == UsernameLower) ||
+                 (x.ApprovedBy3 != null && x.ApprovedBy3.ToLower() == UsernameLower) ||
+                 (x.ApprovedBy4 != null && x.ApprovedBy4.ToLower() == UsernameLower) ||
+                 (x.ApprovedBy5 != null && x.ApprovedBy5.ToLower() == UsernameLower) ||
+                 (x.ApprovedBy6 != null && x.ApprovedBy6.ToLower() == UsernameLower) ||
+                 (x.ApprovedBy7 != null && x.ApprovedBy7.ToLower() == UsernameLower))
+                && (x.RevertStatus == null || x.RevertStatus.ToLower() != "reverted")
+                && x.Status.ToLower() != "void" && x.Status.ToLower() != "rejected");
+
+            int ApproverCancel = await db.Requisition.CountAsync(x => x.RejectedBy == User.Username);
+
+            var VesselIdsInScope = await db.UserVesselRel.AsNoTracking()
+                .Where(x => x.UserID == User.ID)
+                .Select(x => x.VesselID)
+                .Distinct()
+                .ToListAsync();
+
+            // ── Approver: Reverted (Item) — ADMIN sees every reverted
+            // document on their authorized vessels where they're actually
+            // one of the assigned approvers (any level); non-ADMIN sees
+            // only the ones they personally reverted.
+            int ApproverReverted = 0;
+            {
+                if (VesselIdsInScope.Any())
+                {
+                    var RevertedQuery = db.Requisition.AsNoTracking()
+                        .Where(x => x.VesselID.HasValue && VesselIdsInScope.Contains(x.VesselID.Value)
+                            && x.Approved == false
+                            && x.Revised != true
+                            && x.RevertStatus == "REVERTED"
+                            && x.Status.ToLower() != "void" && x.Status.ToLower() != "rejected");
+
+                    if (IsAdminUser)
+                    {
+                        var RevertedCandidates = await RevertedQuery
+                            .Where(x => x.LastRevertedBy != null)
+                            .Include(x => x.InventoryUser).ThenInclude(v => v!.Group)
+                            .ToListAsync();
+
+                        if (RevertedCandidates.Any())
+                        {
+                            var RelevantVesselGroupIds = RevertedCandidates
+                                .Where(x => x.InventoryUser?.Group != null)
+                                .Select(x => x.InventoryUser!.Group!.ID)
+                                .Distinct()
+                                .ToList();
+
+                            var ScopesV1 = await db.UserApprovalScope.AsNoTracking()
+                                .Include(x => x.User)
+                                .Where(x => RelevantVesselGroupIds.Contains(x.VesselGroupID.Value))
+                                .ToListAsync();
+                            var ScopesV2 = await db.UserApprovalScope2.AsNoTracking()
+                                .Include(x => x.User)
+                                .Where(x => x.IsActive != false)
+                                .ToListAsync();
+                            var FamilyMap = await db.StockFamily.AsNoTracking().ToListAsync();
+
+                            foreach (var r in RevertedCandidates)
+                            {
+                                // An ADMIN who personally reverted this document counts
+                                // it as theirs even if they aren't formally scoped as an
+                                // approver for this vessel-group/family (an admin override
+                                // revert, not a normal scoped approval) — otherwise their
+                                // own reverted actions silently never showed up on their
+                                // own Dashboard.
+                                if (r.LastRevertedBy != null && r.LastRevertedBy.ToLower() == UsernameLower)
+                                {
+                                    ApproverReverted++;
+                                    continue;
+                                }
+                                if (r.InventoryUser?.Group == null) continue;
+                                var Family = FamilyMap.FirstOrDefault(x => x.FamilyID == r.CategoryID);
+                                var Usernames = GetFullApproverUsernames(r, r.InventoryUser, Family, ScopesV1, ScopesV2);
+                                if (Usernames.Contains(UsernameLower)) ApproverReverted++;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        ApproverReverted = await RevertedQuery.CountAsync(x =>
+                            x.LastRevertedBy != null && x.LastRevertedBy.ToLower() == UsernameLower);
+                    }
+                }
+            }
+
+            return new ItemDashboardCounts
+            {
+                ReqPending = ReqPending,
+                ReqDone = ReqDone,
+                ReqCancel = ReqCancel,
+                ApproverPending = ApproverPending,
+                ApproverDone = ApproverDone,
+                ApproverCancel = ApproverCancel,
+                ApproverReverted = ApproverReverted,
+            };
+        }
+
+        /// <summary>
+        /// Restored for backward compatibility: iOS builds already in
+        /// production (App Store review lag means an older binary can still
+        /// be live after Android has moved on) still call this old
+        /// Item-Request-only route directly. Do not remove again without
+        /// confirming no client still calls it. Android/current builds use
+        /// Dashboard/Summary below instead, which this shares its item-count
+        /// logic with via ComputeItemDashboardCounts (so both stay
+        /// bug-for-bug consistent) but additionally combines in Job Request
+        /// numbers — this endpoint deliberately stays Item Request only,
+        /// matching the old contract byte-for-byte (Job Request's numbers
+        /// were always fetched separately, client-side, by the app builds
+        /// that call this route).
+        /// </summary>
+        [HttpGet("Dashboard/ItemCounts")]
+        public async Task<IActionResult> DashboardItemCounts([FromQuery] PendingApproverDTO Query)
+        {
+            try
+            {
+                User? User = null;
+                if (Query.UserName != null)
+                {
+                    User = await db.User.FirstOrDefaultAsync(x => x.Username.ToLower() == Query.UserName.ToLower());
+                }
+                else if (Query.UserID != null)
+                {
+                    User = await db.User.FirstOrDefaultAsync(x => x.ID == Query.UserID);
+                }
+                if (User == null) throw new Exception("User not found");
+
+                var Item = await ComputeItemDashboardCounts(User);
+
+                return Ok(new
+                {
+                    Success = true,
+                    Message = "OK",
+                    Data = new
+                    {
+                        Requester = new
+                        {
+                            Pending = Item.ReqPending,
+                            Done = Item.ReqDone,
+                            Cancel = Item.ReqCancel,
+                            Total = Item.ReqPending + Item.ReqDone + Item.ReqCancel,
+                        },
+                        Approver = new
+                        {
+                            Pending = Item.ApproverPending,
+                            Done = Item.ApproverDone,
+                            Cancel = Item.ApproverCancel,
+                            Reverted = Item.ApproverReverted,
+                            Total = Item.ApproverPending + Item.ApproverDone + Item.ApproverCancel + Item.ApproverReverted,
+                        }
+                    }
+                });
+            }
+            catch (Exception Ex)
+            {
+                return BadRequest(new
+                {
+                    Success = false,
+                    Message = Ex.Message,
+                    Data = (object?)null
+                });
+            }
+        }
+
         /// <summary>
         /// One dedicated Dashboard summary call — both the "documents I
         /// created" (Requester) and "documents awaiting my sign-off"
         /// (Approver) views, each broken down Pending/Done/Cancel/Reverted
         /// (+Total), covering Item Request (Requisition) AND Job Request
-        /// combined into the SAME numbers. Replaces the old Item-Request-only
-        /// Dashboard/ItemCounts endpoint AND the separate raw client-side
-        /// /odata/JobRequest $count calls Dart/React used to make on top of
-        /// it (DashboardWebContent.dart's old _fetchRequisitionStats/
-        /// _fetchApproverStats) — including a Job Request Reverted count
-        /// that raw client-side approach never had at all (Job Request's own
+        /// combined into the SAME numbers. Item Request's half comes from
+        /// ComputeItemDashboardCounts (shared with the legacy
+        /// Dashboard/ItemCounts endpoint above); this adds Job Request's
+        /// numbers on top — including a Job Request Reverted count that the
+        /// old raw client-side approach never had at all (Job Request's own
         /// dashboard numbers were only ever Pending/Done/Cancel), which is
         /// why a reverted Job Request never showed up on the Dashboard.
         ///
@@ -595,16 +824,10 @@ namespace Pupa.Controllers
 
                 var IsAdminUser = User.Role == "ADMIN";
                 var UsernameLower = User.Username.ToLower();
-
-                // ── Requester: documents THIS user created ───────────────────
-                int ReqPending = await db.Requisition.CountAsync(x =>
-                    x.RequestBy == User.Username && x.Status == "PENDING" && x.ApprovedFromApp != true);
-                int ReqDone = await db.Requisition.CountAsync(x =>
-                    x.RequestBy == User.Username
-                    && (x.Approved == true || (x.ApprovedBy7 != null && x.ApprovedBy7 != ""))
-                    && x.Status != "VOID" && x.Status != "REJECTED");
-                int ReqCancel = await db.Requisition.CountAsync(x =>
-                    x.RequestBy == User.Username && (x.Status == "VOID" || x.Status == "REJECTED"));
+                var ItemCounts = await ComputeItemDashboardCounts(User);
+                int ReqPending = ItemCounts.ReqPending, ReqDone = ItemCounts.ReqDone, ReqCancel = ItemCounts.ReqCancel;
+                int ApproverPending = ItemCounts.ApproverPending, ApproverDone = ItemCounts.ApproverDone,
+                    ApproverCancel = ItemCounts.ApproverCancel, ApproverReverted = ItemCounts.ApproverReverted;
 
                 // Job Request — same CreatedBy/Status/ApprovalStatus filters
                 // the old client-side raw OData calls used, just moved
@@ -618,54 +841,6 @@ namespace Pupa.Controllers
                 int JobReqCancel = await db.JobRequest.CountAsync(x =>
                     x.Type == "PUPA" && x.CreatedBy != null && x.CreatedBy.ToLower() == UsernameLower
                     && x.ApprovalStatus == "Rejected");
-
-                // ── Approver: documents awaiting/handled by THIS user ─────────
-                int ApproverPending;
-                {
-                    var ItemPendingResult = await PendingApproval(new PendingApproverDTO { UserName = User.Username }) as OkObjectResult;
-                    dynamic? Payload = ItemPendingResult?.Value;
-                    if (Payload != null && Payload.Success == true)
-                    {
-                        // Payload.Data.TotalCount also counts two kinds of entries that
-                        // don't belong in "Pending":
-                        //  - IsAdminOverride: documents where this ADMIN isn't literally
-                        //    the next required approver but can act anyway (oversight).
-                        //  - IsReverted: a reverted document PendingApproval always keeps
-                        //    visible (to any ADMIN, and to whoever reverted it) even while
-                        //    Approved eq false — but it already has its own home in
-                        //    ApproverReverted below, so counting it here too would show it
-                        //    in both buckets at once.
-                        // Every "pending for me" surface in the app (Track Item, the
-                        // Pending Approvals detail sheet's own list, the Approvals page
-                        // badges — all via PendingApprovalsHelper.fetchPendingItemsForUser)
-                        // already excludes both, since neither is genuinely "awaiting my
-                        // turn". Match that here so the Dashboard number (and this same
-                        // value reused for the detail sheet's header) agrees with it.
-                        int Count = 0;
-                        foreach (dynamic Item in Payload.Data.Items)
-                        {
-                            if (Item.IsAdminOverride != true && Item.IsReverted != true) Count++;
-                        }
-                        ApproverPending = Count;
-                    }
-                    else
-                    {
-                        ApproverPending = 0;
-                    }
-                }
-
-                int ApproverDone = await db.Requisition.CountAsync(x =>
-                    ((x.ApprovedBy1 != null && x.ApprovedBy1.ToLower() == UsernameLower) ||
-                     (x.ApprovedBy2 != null && x.ApprovedBy2.ToLower() == UsernameLower) ||
-                     (x.ApprovedBy3 != null && x.ApprovedBy3.ToLower() == UsernameLower) ||
-                     (x.ApprovedBy4 != null && x.ApprovedBy4.ToLower() == UsernameLower) ||
-                     (x.ApprovedBy5 != null && x.ApprovedBy5.ToLower() == UsernameLower) ||
-                     (x.ApprovedBy6 != null && x.ApprovedBy6.ToLower() == UsernameLower) ||
-                     (x.ApprovedBy7 != null && x.ApprovedBy7.ToLower() == UsernameLower))
-                    && (x.RevertStatus == null || x.RevertStatus.ToLower() != "reverted")
-                    && x.Status.ToLower() != "void" && x.Status.ToLower() != "rejected");
-
-                int ApproverCancel = await db.Requisition.CountAsync(x => x.RejectedBy == User.Username);
 
                 // Job Request Done/Cancel — same ApprovedByN / RejectedBy
                 // filters the old client-side raw calls used.
@@ -692,74 +867,6 @@ namespace Pupa.Controllers
                     .Select(x => x.VesselID)
                     .Distinct()
                     .ToListAsync();
-
-                // ── Approver: Reverted (Item) — ADMIN sees every reverted
-                // document on their authorized vessels where they're actually
-                // one of the assigned approvers (any level); non-ADMIN sees
-                // only the ones they personally reverted.
-                int ApproverReverted = 0;
-                {
-                    if (VesselIdsInScope.Any())
-                    {
-                        var RevertedQuery = db.Requisition.AsNoTracking()
-                            .Where(x => x.VesselID.HasValue && VesselIdsInScope.Contains(x.VesselID.Value)
-                                && x.Approved == false
-                                && x.Revised != true
-                                && x.RevertStatus == "REVERTED"
-                                && x.Status.ToLower() != "void" && x.Status.ToLower() != "rejected");
-
-                        if (IsAdminUser)
-                        {
-                            var RevertedCandidates = await RevertedQuery
-                                .Where(x => x.LastRevertedBy != null)
-                                .Include(x => x.InventoryUser).ThenInclude(v => v!.Group)
-                                .ToListAsync();
-
-                            if (RevertedCandidates.Any())
-                            {
-                                var RelevantVesselGroupIds = RevertedCandidates
-                                    .Where(x => x.InventoryUser?.Group != null)
-                                    .Select(x => x.InventoryUser!.Group!.ID)
-                                    .Distinct()
-                                    .ToList();
-
-                                var ScopesV1 = await db.UserApprovalScope.AsNoTracking()
-                                    .Include(x => x.User)
-                                    .Where(x => RelevantVesselGroupIds.Contains(x.VesselGroupID.Value))
-                                    .ToListAsync();
-                                var ScopesV2 = await db.UserApprovalScope2.AsNoTracking()
-                                    .Include(x => x.User)
-                                    .Where(x => x.IsActive != false)
-                                    .ToListAsync();
-                                var FamilyMap = await db.StockFamily.AsNoTracking().ToListAsync();
-
-                                foreach (var r in RevertedCandidates)
-                                {
-                                    // An ADMIN who personally reverted this document counts
-                                    // it as theirs even if they aren't formally scoped as an
-                                    // approver for this vessel-group/family (an admin override
-                                    // revert, not a normal scoped approval) — otherwise their
-                                    // own reverted actions silently never showed up on their
-                                    // own Dashboard.
-                                    if (r.LastRevertedBy != null && r.LastRevertedBy.ToLower() == UsernameLower)
-                                    {
-                                        ApproverReverted++;
-                                        continue;
-                                    }
-                                    if (r.InventoryUser?.Group == null) continue;
-                                    var Family = FamilyMap.FirstOrDefault(x => x.FamilyID == r.CategoryID);
-                                    var Usernames = GetFullApproverUsernames(r, r.InventoryUser, Family, ScopesV1, ScopesV2);
-                                    if (Usernames.Contains(UsernameLower)) ApproverReverted++;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            ApproverReverted = await RevertedQuery.CountAsync(x =>
-                                x.LastRevertedBy != null && x.LastRevertedBy.ToLower() == UsernameLower);
-                        }
-                    }
-                }
 
                 // ── Approver: Job Request Reverted (NEW — never existed
                 // before; this is the actual "reverted doesn't show up" gap).
