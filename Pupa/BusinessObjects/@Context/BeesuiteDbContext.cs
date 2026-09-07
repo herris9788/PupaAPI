@@ -43,6 +43,9 @@ namespace Pupa.BusinessObjects
         public DbSet<RequisitionNotaVerification> RequisitionNotaVerification { get; set; }
 
         public DbSet<RequisitionDetail> RequisitionDetail { get; set; }
+        public DbSet<RequisitionFormTemplate> RequisitionFormTemplate { get; set; }
+        public DbSet<RequisitionFormConfig> RequisitionFormConfig { get; set; }
+        public DbSet<RequisitionFormData> RequisitionFormData { get; set; }
         public DbSet<VesselSpecRel> VesselSpecRel { get; set; }
         public DbSet<StockCategory> StockCategory { get; set; }
         public DbSet<StockFamily> StockFamily { get; set; }
@@ -266,6 +269,52 @@ namespace Pupa.BusinessObjects
                 .WithOne(e => e.Job)
                 .HasForeignKey(e => new { e.EntityType, e.EntityID })
                 .HasPrincipalKey(e => new { e.EntityTypeName, e.ID });
+
+            // ── Dynamic Requisition Form (Template -> Config -> Data) ─────────
+            // Aditif: tidak ada inverse navigation di Requisition/RequisitionDetail
+            // (pakai WithMany() tanpa argumen) supaya entity existing tidak berubah.
+            // Referensi: Pupa/docs/dynamic-requisition-wizard-recommended.md
+            modelBuilder.Entity<RequisitionFormTemplate>()
+                .HasIndex(t => new { t.Code, t.Version })
+                .IsUnique();
+
+            modelBuilder.Entity<RequisitionFormConfig>()
+                .HasIndex(c => new { c.ItemCode, c.EntityType })
+                .IsUnique();
+            modelBuilder.Entity<RequisitionFormConfig>()
+                .HasOne(c => c.Template)
+                .WithMany()
+                .HasForeignKey(c => c.TemplateID)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<RequisitionFormData>()
+                .HasOne(d => d.Requisition)
+                .WithMany()
+                .HasForeignKey(d => d.RequisitionID)
+                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<RequisitionFormData>()
+                .HasOne(d => d.RequisitionDetail)
+                .WithMany()
+                .HasForeignKey(d => d.RequisitionDetailID)
+                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<RequisitionFormData>()
+                .HasOne(d => d.Config)
+                .WithMany()
+                .HasForeignKey(d => d.ConfigID)
+                .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<RequisitionFormData>()
+                .HasOne(d => d.Template)
+                .WithMany()
+                .HasForeignKey(d => d.TemplateID)
+                .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<RequisitionFormData>()
+                .HasIndex(d => d.RequisitionID)
+                .HasFilter("\"RequisitionDetailID\" IS NULL")
+                .IsUnique();
+            modelBuilder.Entity<RequisitionFormData>()
+                .HasIndex(d => d.RequisitionDetailID)
+                .HasFilter("\"RequisitionDetailID\" IS NOT NULL")
+                .IsUnique();
         }
 
         public override int SaveChanges(bool acceptAllChangesOnSuccess)

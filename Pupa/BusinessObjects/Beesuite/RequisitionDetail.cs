@@ -1,6 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json;
 
 namespace Pupa.BusinessObjects.Beesuite
 {
@@ -593,6 +594,16 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+
+        /// <summary>
+        /// Transient — jawaban form dinamis untuk item ini. Opsional & aditif:
+        /// null/absen => detail dibuat & dibaca persis seperti sebelum fitur
+        /// dynamic form ada. Disimpan relasional di RequisitionFormData, bukan
+        /// sebagai kolom. Bentuk:
+        /// { "templateCode": "...", "values": { "FieldKey": &lt;nilai&gt;, ... } }
+        /// </summary>
+        [NotMapped]
+        public virtual JsonElement? DynamicForm { get; set; }
 
     }
 }
