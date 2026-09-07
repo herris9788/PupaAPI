@@ -76,7 +76,14 @@ namespace Pupa
                         {
                             odataServices.AddSingleton<ODataQueryValidator, OdataValidator>();
                         })
-                        .EnableQueryFeatures(100);
+                        // Must match SetMaxTop(1000) above — this call's maxTopValue arg
+                        // silently OVERRIDES the top-level MaxTop for this route only.
+                        // Was 100, causing every /beesuite/odata/* query with $top over
+                        // 100 (clients reasonably assume up to 1000, per the line above)
+                        // to fail with "The limit of '100' for Top query has been
+                        // exceeded" (ErrorLog Source='Backend', e.g. UserVesselRel with
+                        // $top=500). Found via SOLVE ERROR triage.
+                        .EnableQueryFeatures(1000);
                 });
 
             // ✅ Hanya untuk minimal API / HttpContext.Response.WriteAsJsonAsync
