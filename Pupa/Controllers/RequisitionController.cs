@@ -34,12 +34,14 @@ namespace Pupa.Controllers
         private readonly IConfiguration _configuration;
         private readonly BeesuiteDbContext _db;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly Pupa.Services.RequisitionDynamicFormService _dynamicForm;
 
-        public RequisitionController(BeesuiteDbContext db, IConfiguration configuration, IHttpClientFactory httpClientFactory)
+        public RequisitionController(BeesuiteDbContext db, IConfiguration configuration, IHttpClientFactory httpClientFactory, Pupa.Services.RequisitionDynamicFormService dynamicForm)
         {
             _db = db;
             _configuration = configuration;
             _httpClientFactory = httpClientFactory;
+            _dynamicForm = dynamicForm;
         }
 
 
@@ -92,8 +94,35 @@ namespace Pupa.Controllers
                 if (wireRopeValidationError != null)
                     return wireRopeValidationError;
 
-                await _db.AddAsync(Body);
-                await _db.SaveChangesAsync();
+                // ── Dynamic form (opsional & aditif) ────────────────────────
+                // Inert 100% bila payload tidak membawa field "DynamicForm" di
+                // header maupun detail. Validasi dijalankan SEBELUM apa pun
+                // disimpan; penulisan form ikut satu transaksi dengan requisition.
+                var hasDynamicForm = Pupa.Services.RequisitionDynamicFormService.GraphHasDynamicForm(Body);
+                if (hasDynamicForm)
+                {
+                    try
+                    {
+                        await _dynamicForm.ValidateGraphAsync(_db, Body);
+                    }
+                    catch (Pupa.Services.RequisitionDynamicFormService.DynamicFormValidationException dfEx)
+                    {
+                        return BadRequest(new { Message = "Validasi form dinamis gagal.", dfEx.Errors });
+                    }
+
+                    await using var reqTx = await _db.Database.BeginTransactionAsync();
+                    await _db.AddAsync(Body);
+                    await _db.SaveChangesAsync();
+                    await _dynamicForm.PersistGraphAsync(_db, Body, User?.Identity?.Name ?? Body.RequestBy);
+                    await _db.SaveChangesAsync();
+                    await reqTx.CommitAsync();
+                }
+                else
+                {
+                    await _db.AddAsync(Body);
+                    await _db.SaveChangesAsync();
+                }
+
                 Body.RequisitionDetails = new ObservableCollection<RequisitionDetail>();
                 Body.InventoryUser = null;
                 return Ok(Body);

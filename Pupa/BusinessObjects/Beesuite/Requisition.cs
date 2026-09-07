@@ -1,6 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json;
 
 namespace Pupa.BusinessObjects.Beesuite
 {
@@ -1047,6 +1048,16 @@ namespace Pupa.BusinessObjects.Beesuite
         [NotMapped]
         public virtual ObservableCollection<LogActivity> Logs { get; set; } = new ObservableCollection<LogActivity>();
         public virtual ObservableCollection<RequisitionEngineNumber> EngineNumbers { get; set; }
+
+        /// <summary>
+        /// Transient — jawaban form dinamis level header. Opsional & aditif:
+        /// null/absen => requisition dibuat & dibaca persis seperti sebelum
+        /// fitur dynamic form ada. Disimpan relasional di RequisitionFormData,
+        /// bukan sebagai kolom. Bentuk:
+        /// { "templateCode": "...", "values": { "FieldKey": &lt;nilai&gt;, ... } }
+        /// </summary>
+        [NotMapped]
+        public virtual JsonElement? DynamicForm { get; set; }
     }
 }
 
