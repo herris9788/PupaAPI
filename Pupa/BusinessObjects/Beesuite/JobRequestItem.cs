@@ -205,5 +205,59 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _SpecificationAscend;
             set { if (_SpecificationAscend == value) return; OnPropertyChanging(); _SpecificationAscend = value; OnPropertyChanged(); }
         }
+
+        /// <summary>JSON string, parsed client-side.</summary>
+        private string? _JobLocation { get; set; }
+        [Column("JobLocation")]
+        public virtual string? JobLocation
+        {
+            get => _JobLocation;
+            set { if (_JobLocation == value) return; OnPropertyChanging(); _JobLocation = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>JSON string, parsed client-side.</summary>
+        private string? _DetailJobType { get; set; }
+        [Column("DetailJobType")]
+        public virtual string? DetailJobType
+        {
+            get => _DetailJobType;
+            set { if (_DetailJobType == value) return; OnPropertyChanging(); _DetailJobType = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>JSON string, parsed client-side.</summary>
+        private string? _AeNumber { get; set; }
+        [Column("AeNumber")]
+        public virtual string? AeNumber
+        {
+            get => _AeNumber;
+            set { if (_AeNumber == value) return; OnPropertyChanging(); _AeNumber = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>JSON string, parsed client-side.</summary>
+        private string? _ReasonRequisition { get; set; }
+        [Column("ReasonRequisition")]
+        public virtual string? ReasonRequisition
+        {
+            get => _ReasonRequisition;
+            set { if (_ReasonRequisition == value) return; OnPropertyChanging(); _ReasonRequisition = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>FABRICATION only.</summary>
+        private string? _ItemCategory { get; set; }
+        [Column("ItemCategory")]
+        public virtual string? ItemCategory
+        {
+            get => _ItemCategory;
+            set { if (_ItemCategory == value) return; OnPropertyChanging(); _ItemCategory = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>FABRICATION only.</summary>
+        private string? _ItemFamily { get; set; }
+        [Column("ItemFamily")]
+        public virtual string? ItemFamily
+        {
+            get => _ItemFamily;
+            set { if (_ItemFamily == value) return; OnPropertyChanging(); _ItemFamily = value; OnPropertyChanged(); }
+        }
     }
 }
