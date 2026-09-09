@@ -179,16 +179,22 @@ namespace Pupa.Controllers
         {
             if (string.IsNullOrWhiteSpace(itemCode)) return BadRequest("itemCode wajib.");
             var r = await _svc.ResolveEffectiveSchemaAsync(_db, itemCode, entityType);
+            // camelCase on purpose: the Flutter client (RequisitionDynamicFormApi /
+            // WizardOrchestrator) reads res['hasConfig'] / res['schema'] /
+            // res['templateCode'], matching dynamic-requisition-form-frontend.md §1c
+            // and the /data endpoint's ToResponse(). PupaAPI's global
+            // PropertyNamingPolicy=null would otherwise emit PascalCase and the
+            // wizard would never render (hasConfig always null -> falsy).
             return Ok(new
             {
-                r.EntityType,
-                r.ItemCode,
-                r.HasConfig,
-                r.ConfigID,
-                r.TemplateID,
-                r.TemplateCode,
-                r.TemplateVersion,
-                Schema = r.Schema,
+                entityType = r.EntityType,
+                itemCode = r.ItemCode,
+                hasConfig = r.HasConfig,
+                configId = r.ConfigID,
+                templateId = r.TemplateID,
+                templateCode = r.TemplateCode,
+                templateVersion = r.TemplateVersion,
+                schema = r.Schema,
             });
         }
 
