@@ -129,6 +129,42 @@ namespace Pupa.Controllers
             return CreatedAtAction(nameof(GetTemplate), new { id = copy.ID }, copy);
         }
 
+        /// <summary>
+        /// Hard delete template DRAFT. Default: ditolak (409) kalau masih dipakai
+        /// config. `deleteConfigs=true` -> hapus juga semua config yang menunjuk
+        /// ke template ini dalam satu transaksi (config Mode=Template tanpa
+        /// template tidak valid — CHECK ck_reqformcfg_mode melarang TemplateID
+        /// NULL — jadi config-nya ikut dihapus, bukan di-null-kan).
+        /// </summary>
+        [HttpDelete("template/{id:int}")]
+        public async Task<IActionResult> DeleteTemplate(int id, [FromQuery] bool deleteConfigs = false)
+        {
+            var t = await _db.RequisitionFormTemplate.FirstOrDefaultAsync(x => x.ID == id);
+            if (t == null) return NotFound();
+            if (t.IsPublished)
+                return Conflict("Template sudah published — tidak bisa dihapus. Set IsActive=false atau buat versi baru.");
+
+            var configs = await _db.RequisitionFormConfig.Where(c => c.TemplateID == id).ToListAsync();
+            if (configs.Count > 0 && !deleteConfigs)
+                return Conflict(new
+                {
+                    Message = $"Template masih dipakai oleh {configs.Count} config.",
+                    Hint = "Panggil lagi dengan ?deleteConfigs=true untuk menghapus config-config itu sekalian, "
+                         + "atau nonaktifkan template (IsActive=false) tanpa menghapus.",
+                    ConfigCount = configs.Count,
+                    ItemCodes = configs.Select(c => c.ItemCode).Distinct().ToList(),
+                });
+
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            if (configs.Count > 0) _db.RequisitionFormConfig.RemoveRange(configs);
+            // RequisitionFormData.TemplateID -> FK ON DELETE SET NULL (pointer
+            // histori saja; SchemaSnapshot per baris tetap utuh).
+            _db.RequisitionFormTemplate.Remove(t);
+            await _db.SaveChangesAsync();
+            await tx.CommitAsync();
+            return Ok(new { deletedTemplate = id, deletedConfigs = configs.Count });
+        }
+
         // ──────────────────────────── CONFIG ────────────────────────────────
 
         [HttpGet("config")]
@@ -168,6 +204,35 @@ namespace Pupa.Controllers
             }
             await _db.SaveChangesAsync();
             return Ok(existing ?? body);
+        }
+
+        /// <summary>Hard delete satu config. RequisitionFormData.ConfigID -> FK
+        /// ON DELETE SET NULL, jadi jawaban wizard yang sudah tersimpan tidak
+        /// ikut terhapus (SchemaSnapshot per baris tetap jadi acuan).</summary>
+        [HttpDelete("config/{id:int}")]
+        public async Task<IActionResult> DeleteConfig(int id)
+        {
+            var c = await _db.RequisitionFormConfig.FirstOrDefaultAsync(x => x.ID == id);
+            if (c == null) return NotFound();
+            _db.RequisitionFormConfig.Remove(c);
+            await _db.SaveChangesAsync();
+            return NoContent();
+        }
+
+        /// <summary>Alternatif hapus config berdasarkan (itemCode, entityType).</summary>
+        [HttpDelete("config")]
+        public async Task<IActionResult> DeleteConfigByItem(
+            [FromQuery] string itemCode,
+            [FromQuery] string entityType = RequisitionDynamicFormService.EntityDetail)
+        {
+            if (string.IsNullOrWhiteSpace(itemCode)) return BadRequest("itemCode wajib.");
+            var rows = await _db.RequisitionFormConfig
+                .Where(c => c.ItemCode == itemCode && c.EntityType == entityType)
+                .ToListAsync();
+            if (rows.Count == 0) return NotFound();
+            _db.RequisitionFormConfig.RemoveRange(rows);
+            await _db.SaveChangesAsync();
+            return Ok(new { deleted = rows.Count });
         }
 
         // ─────────────────────── EFFECTIVE SCHEMA ───────────────────────────
