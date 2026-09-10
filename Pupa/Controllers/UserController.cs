@@ -60,29 +60,25 @@ namespace Pupa.Controllers
                 // This document's OWN snapshot decides the rule engine — not the
                 // vessel's current flag, which may have changed since submission.
                 // Only loaded when actually needed (v1 stays untouched otherwise).
-                List<UserApprovalScope2> ScopesV2 = new();
+                // See ResolveScopeCandidatesV2's own comment for why these four
+                // small tables (not UserApprovalScope2, which is retired) are
+                // what v2 resolves through now.
+                List<MandatoryVessel> MandatoryVessels = new();
+                List<MandatoryVesselApprover> MandatoryApprovers = new();
+                List<ItemGroupMapping> GroupMappings = new();
+                List<UserApprovalGroup> UserGroups = new();
+                Dictionary<string, User> UsersByUsernameLower = new();
                 if (Requisition.ApprovalRuleVersion == 2)
                 {
-                    ScopesV2 = await db.UserApprovalScope2.AsNoTracking()
-                        .Include(x => x.User)
-                        .Where(x => x.IsActive != false)
-                        .ToListAsync();
+                    MandatoryVessels = await db.MandatoryVessel.AsNoTracking().ToListAsync();
+                    MandatoryApprovers = await db.MandatoryVesselApprover.AsNoTracking().ToListAsync();
+                    GroupMappings = await db.ItemGroupMapping.AsNoTracking().ToListAsync();
+                    UserGroups = await db.UserApprovalGroup.AsNoTracking().ToListAsync();
+                    UsersByUsernameLower = await db.User.AsNoTracking()
+                        .ToDictionaryAsync(x => x.Username.ToLower(), x => x);
                 }
 
-                string? GetActualApproverName(int level)
-                {
-                    return level switch
-                    {
-                        1 => Requisition.ApprovedBy1,
-                        2 => Requisition.ApprovedBy2,
-                        3 => Requisition.ApprovedBy3,
-                        4 => Requisition.ApprovedBy4,
-                        5 => Requisition.ApprovedBy5,
-                        6 => Requisition.ApprovedBy6,
-                        7 => Requisition.ApprovedBy7,
-                        _ => null
-                    };
-                }
+                string? GetActualApproverName(int level) => GetRequisitionApprovedByName(Requisition, level);
 
                 // v2 match: every dimension is a wildcard when NULL. When the
                 // document has a Group (Item Request V2 combined submission),
@@ -113,9 +109,10 @@ namespace Pupa.Controllers
                 List<List<UserApprovalScope2>> GroupChain = new();
                 if (Requisition.ApprovalRuleVersion == 2 && !string.IsNullOrEmpty(Requisition.Group))
                 {
-                    for (int lvl = 1; lvl <= 7; lvl++)
+                    for (int position = 1; position <= 7; position++)
                     {
-                        var candidates = ResolveScopeCandidatesV2(ScopesV2, Vessel, null, null, lvl, Requisition.Group, Requisition.Department, Requisition.SubDepartment);
+                        var candidates = ResolveScopeCandidatesV2(Vessel, null, null, V2LevelLabel(position), Requisition.Group, Requisition.Department, Requisition.SubDepartment,
+                            MandatoryVessels, MandatoryApprovers, GroupMappings, UserGroups, UsersByUsernameLower);
                         if (candidates.Count > 0) GroupChain.Add(candidates);
                     }
                 }
@@ -142,10 +139,11 @@ namespace Pupa.Controllers
                     }
                     else
                     {
-                        for (int lvl = 1; lvl <= 7; lvl++)
+                        for (int position = 1; position <= 7; position++)
                         {
-                            if (ResolveScopeCandidatesV2(ScopesV2, Vessel, FamilyStockCategoryID, FamilyFamilyID, lvl, Requisition.Group, Requisition.Department, Requisition.SubDepartment).Count > 0)
-                                LiveCount = lvl;
+                            if (ResolveScopeCandidatesV2(Vessel, FamilyStockCategoryID, FamilyFamilyID, V2LevelLabel(position), Requisition.Group, Requisition.Department, Requisition.SubDepartment,
+                                    MandatoryVessels, MandatoryApprovers, GroupMappings, UserGroups, UsersByUsernameLower).Count > 0)
+                                LiveCount = position;
                         }
                     }
                     if (LiveCount > 0)
@@ -158,7 +156,8 @@ namespace Pupa.Controllers
 
                 for (int i = 0; i < ApproverCount; i++)
                 {
-                    var Level = i + 1;
+                    var Position = i + 1;
+                    var Level = Requisition.ApprovalRuleVersion == 2 ? V2LevelLabel(Position) : Position;
                     List<int> ResolvedUserIds;
                     List<string> ResolvedUsernames;
                     object? MatchedSummary;
@@ -167,7 +166,8 @@ namespace Pupa.Controllers
                     {
                         var CandidatesV2 = (!string.IsNullOrEmpty(Requisition.Group)
                             ? (GroupChain.ElementAtOrDefault(i) ?? new List<UserApprovalScope2>())
-                            : ResolveScopeCandidatesV2(ScopesV2, Vessel, FamilyStockCategoryID, FamilyFamilyID, Level, Requisition.Group, Requisition.Department, Requisition.SubDepartment))
+                            : ResolveScopeCandidatesV2(Vessel, FamilyStockCategoryID, FamilyFamilyID, Level, Requisition.Group, Requisition.Department, Requisition.SubDepartment,
+                                MandatoryVessels, MandatoryApprovers, GroupMappings, UserGroups, UsersByUsernameLower))
                             .OrderBy(s => s.ID).ToList();
                         ResolvedUserIds = CandidatesV2.Where(s => s.UserID != null).Select(s => s.UserID!.Value).ToList();
                         ResolvedUsernames = CandidatesV2.Where(s => s.User?.Username != null).Select(s => s.User!.Username!).ToList();
@@ -286,6 +286,47 @@ namespace Pupa.Controllers
             return result;
         }
 
+        // Requisition.ApprovedBy7 is reserved by a separate system entirely —
+        // data written there isn't a genuine level-7 approval. V2 documents
+        // treat their 7th (final) approval step as "Level 8" instead — the
+        // resolver matches MandatoryVesselApprover/etc. on Level 8, and the
+        // actual recorded approval is read/written to ApprovedBy8, never
+        // ApprovedBy7. V1 is completely unaffected by both helpers below: it
+        // keeps using plain 1-7 exactly as it always has.
+        //
+        // Two independent things need this "position 7 -> label 8" mapping,
+        // so it's centralized here instead of copy-pasted at every call site
+        // (there used to be three near-identical copies of
+        // GetActualApproverName alone):
+        //   - GetRequisitionApprovedByName: given the step's 1-based POSITION
+        //     (always 1-7, regardless of version), returns the ApprovedByN
+        //     string actually recorded for it — translates position 7 to
+        //     column ApprovedBy8 internally for v2 documents. Callers never
+        //     need to know about this.
+        //   - V2LevelLabel: given that same 1-based position, returns the
+        //     Level value to pass into ResolveScopeCandidatesV2 (and to
+        //     whatever an admin configures in MandatoryVesselApprover.Level)
+        //     — 8 instead of 7 for the 7th position, so "who should approve"
+        //     and "what got recorded" stay pointed at the same slot.
+        private static string? GetRequisitionApprovedByName(Requisition requisition, int position)
+        {
+            var level = (position == 7 && requisition.ApprovalRuleVersion == 2) ? 8 : position;
+            return level switch
+            {
+                1 => requisition.ApprovedBy1,
+                2 => requisition.ApprovedBy2,
+                3 => requisition.ApprovedBy3,
+                4 => requisition.ApprovedBy4,
+                5 => requisition.ApprovedBy5,
+                6 => requisition.ApprovedBy6,
+                7 => requisition.ApprovedBy7,
+                8 => requisition.ApprovedBy8,
+                _ => null
+            };
+        }
+
+        private static int V2LevelLabel(int position) => position == 7 ? 8 : position;
+
         // v1 (UserApprovalScope) — tier order and predicates are a verbatim
         // transcription of the historical ??= cascade (tiers [1]-[18], with
         // [Nb] SubDepartment-only variants), just returning every matching
@@ -356,58 +397,100 @@ namespace Pupa.Controllers
             return new List<UserApprovalScope>();
         }
 
-        // v2 (UserApprovalScope2) — same MatchesV2/MatchesV2AllGroups
-        // predicates as the historical single-row resolver, but returns
-        // every row tied at the winning (max) Specificity instead of the
-        // first by ID.
+        // v2 REDESIGN (Approval Rule V2 prep, 2026-09): UserApprovalScope2 was
+        // retired — its data was wiped and this resolver no longer reads it at
+        // all. V2 now resolves through two new, simpler tables instead of the
+        // old Specificity-tier cascade:
+        //
+        //   1. MandatoryVessel / MandatoryVesselApprover — a vessel can be
+        //      flagged "wajib" (mandatory) with a per-vessel
+        //      MandatoryLevelCutoff. For Level <= that cutoff, the approver(s)
+        //      MUST be the specific named user(s) configured for that exact
+        //      (VesselID, CompanyDB, Level) — no Category/Family/Department
+        //      matching involved at this tier at all.
+        //   2. ItemGroupMapping / ApprovalGroup / UserApprovalGroup — every
+        //      other case (Level past the cutoff, or a vessel not marked
+        //      mandatory at all) resolves generically: the item's
+        //      Category/Family is mapped to one or more business "Group"
+        //      names via ItemGroupMapping (FamilyID == null on a mapping row
+        //      means "any family under this Category" — same wildcard
+        //      convention used throughout this app), then every user scoped
+        //      to any of those Groups in UserApprovalGroup is an eligible
+        //      approver. A Group-combined document (Requisition.Group already
+        //      set) skips the Category/Family derivation and matches that
+        //      Group name directly, same as before.
+        //
+        // Department/SubDepartment are still accepted as parameters (so every
+        // call site below didn't need to change its own signature) but are no
+        // longer matched against anything — neither new table carries that
+        // dimension. Results are synthesized as ordinary (unpersisted)
+        // UserApprovalScope2 objects purely so every caller downstream (which
+        // reads .UserID/.User/.VesselID/.Group/etc. off the returned rows for
+        // display and for Contains(User.ID) checks) keeps working unchanged.
         private List<UserApprovalScope2> ResolveScopeCandidatesV2(
-            IEnumerable<UserApprovalScope2> ScopesV2, InventoryUser Vessel, int? CatId, int? FamId,
-            int Level, string? Group, string? Department, string? SubDepartment)
+            InventoryUser Vessel, int? CatId, int? FamId, int Level, string? Group,
+            string? Department, string? SubDepartment,
+            List<MandatoryVessel> MandatoryVessels, List<MandatoryVesselApprover> MandatoryApprovers,
+            List<ItemGroupMapping> GroupMappings, List<UserApprovalGroup> UserGroups,
+            Dictionary<string, User> UsersByUsernameLower)
         {
-            bool Matches(UserApprovalScope2 s)
+            List<UserApprovalScope2> BuildResult(IEnumerable<string> Usernames, string? ResolvedGroup)
             {
-                if (s.IsActive == false) return false;
-                if (s.Level != null && s.Level != Level) return false;
-                if (s.VesselID != null && s.VesselID != Vessel.ID) return false;
-                if (s.VesselGroupID != null && s.VesselGroupID != Vessel.Group?.ID) return false;
-                if (s.CompanyDB != null && s.CompanyDB != Vessel.DB) return false;
-                if (s.Department != null && s.Department != Department) return false;
-                if (s.SubDepartment != null && s.SubDepartment != SubDepartment) return false;
-
-                if (!string.IsNullOrEmpty(Group))
+                var result = new List<UserApprovalScope2>();
+                foreach (var username in Usernames.Distinct())
                 {
-                    return s.Group == Group;
+                    if (!UsersByUsernameLower.TryGetValue(username.ToLower(), out var user)) continue;
+                    result.Add(new UserApprovalScope2
+                    {
+                        UserID = user.ID,
+                        User = user,
+                        VesselID = Vessel.ID,
+                        VesselGroupID = Vessel.Group?.ID,
+                        CompanyDB = Vessel.DB,
+                        Level = (short)Level,
+                        Group = ResolvedGroup,
+                        StockCategoryID = CatId,
+                        StockFamilyID = FamId,
+                        Department = Department,
+                        SubDepartment = SubDepartment,
+                    });
                 }
-
-                if (s.StockCategoryID != null && s.StockCategoryID != CatId) return false;
-                if (s.StockFamilyID != null && s.StockFamilyID != FamId) return false;
-                return true;
+                return DedupeByUserId(result.OrderBy(s => s.UserID).ToList(), s => s.UserID);
             }
 
-            bool MatchesAllGroups(UserApprovalScope2 s)
+            var Mandatory = MandatoryVessels.FirstOrDefault(m => m.VesselID == Vessel.ID && m.CompanyDB == Vessel.DB);
+            if (Mandatory != null && Level <= Mandatory.MandatoryLevelCutoff)
             {
-                if (s.IsActive == false) return false;
-                if (s.Group != null) return false;
-                if (s.Level != null && s.Level != Level) return false;
-                if (s.VesselID != null && s.VesselID != Vessel.ID) return false;
-                if (s.VesselGroupID != null && s.VesselGroupID != Vessel.Group?.ID) return false;
-                if (s.CompanyDB != null && s.CompanyDB != Vessel.DB) return false;
-                if (s.Department != null && s.Department != Department) return false;
-                if (s.SubDepartment != null && s.SubDepartment != SubDepartment) return false;
-                return true;
+                var MandatoryUsernames = MandatoryApprovers
+                    .Where(a => a.VesselID == Vessel.ID && a.CompanyDB == Vessel.DB && a.Level == Level)
+                    .Select(a => a.Username);
+                return BuildResult(MandatoryUsernames, Group);
             }
 
-            var matched = ScopesV2.Where(Matches).ToList();
-            if (matched.Count == 0 && !string.IsNullOrEmpty(Group))
+            List<string> ResolvedGroups;
+            if (!string.IsNullOrEmpty(Group))
             {
-                matched = ScopesV2.Where(MatchesAllGroups).ToList();
+                ResolvedGroups = new List<string> { Group };
             }
-            if (matched.Count == 0) return matched;
+            else if (CatId != null)
+            {
+                ResolvedGroups = GroupMappings
+                    .Where(g => g.StockCategoryID == CatId && (FamId == null || g.FamilyID == FamId))
+                    .Select(g => g.GroupName)
+                    .Distinct()
+                    .ToList();
+            }
+            else
+            {
+                ResolvedGroups = new List<string>();
+            }
 
-            int maxSpecificity = matched.Max(x => x.Specificity);
-            var tied = matched.Where(x => x.Specificity == maxSpecificity)
-                .OrderBy(x => x.ID).ToList();
-            return DedupeByUserId(tied, s => s.UserID);
+            if (ResolvedGroups.Count == 0) return new List<UserApprovalScope2>();
+
+            var GroupUsernames = UserGroups
+                .Where(u => ResolvedGroups.Contains(u.GroupName))
+                .Select(u => u.Username);
+            return BuildResult(GroupUsernames, ResolvedGroups.Count == 1 ? ResolvedGroups[0] : string.Join(", ", ResolvedGroups));
         }
 
         // Pre-creation preview: what would the approver chain / ApprovalMaxLevel
@@ -470,14 +553,27 @@ namespace Pupa.Controllers
 
                 if (Vessel.ApprovalRuleVersion == 2)
                 {
-                    var ScopesV2 = await db.UserApprovalScope2.AsNoTracking()
-                        .Include(x => x.User)
-                        .Where(x => x.IsActive != false)
-                        .ToListAsync();
+                    var MandatoryVessels = await db.MandatoryVessel.AsNoTracking().ToListAsync();
+                    var MandatoryApprovers = await db.MandatoryVesselApprover.AsNoTracking().ToListAsync();
+                    var GroupMappings = await db.ItemGroupMapping.AsNoTracking().ToListAsync();
+                    var UserGroups = await db.UserApprovalGroup.AsNoTracking().ToListAsync();
+                    var UsersByUsernameLower = await db.User.AsNoTracking()
+                        .ToDictionaryAsync(x => x.Username.ToLower(), x => x);
 
-                    for (int Level = 1; Level <= 7; Level++)
+                    // The ApprovedBy7-reserved/"use 8 instead" convention (see
+                    // GetRequisitionApprovedByName) is a Requisition-only quirk.
+                    // Job Requests calling this same endpoint (Query.Category
+                    // text, no numeric CategoryID -- see ResolveApproversDTO)
+                    // have no such reservation and must keep plain 1-7, or
+                    // CountPendingJobRequestsForApprover's own ApprovedBy7-based
+                    // position matching against this Payload would never find
+                    // its 7th level again.
+                    bool ApplyLevel7Skip = Query.CategoryID != null;
+                    for (int Position = 1; Position <= 7; Position++)
                     {
-                        var Candidates = ResolveScopeCandidatesV2(ScopesV2, Vessel, FamilyStockCategoryID, FamilyFamilyID, Level, Query.Group, Query.Department, Query.SubDepartment)
+                        var Level = ApplyLevel7Skip ? V2LevelLabel(Position) : Position;
+                        var Candidates = ResolveScopeCandidatesV2(Vessel, FamilyStockCategoryID, FamilyFamilyID, Level, Query.Group, Query.Department, Query.SubDepartment,
+                                MandatoryVessels, MandatoryApprovers, GroupMappings, UserGroups, UsersByUsernameLower)
                             .Where(s => s.UserID != null)
                             .OrderBy(s => s.ID)
                             .ToList();
@@ -582,7 +678,13 @@ namespace Pupa.Controllers
                 x.RequestBy == User.Username && x.Status == "PENDING" && x.ApprovedFromApp != true);
             int ReqDone = await db.Requisition.CountAsync(x =>
                 x.RequestBy == User.Username
-                && (x.Approved == true || (x.ApprovedBy7 != null && x.ApprovedBy7 != ""))
+                // v2's final step lands in ApprovedBy8, not the reserved
+                // ApprovedBy7 (see GetRequisitionApprovedByName) — v1 is
+                // unaffected, ApprovedBy8 is never populated for it.
+                && (x.Approved == true
+                    || (x.ApprovalRuleVersion == 2
+                        ? (x.ApprovedBy8 != null && x.ApprovedBy8 != "")
+                        : (x.ApprovedBy7 != null && x.ApprovedBy7 != "")))
                 && x.Status != "VOID" && x.Status != "REJECTED");
             int ReqCancel = await db.Requisition.CountAsync(x =>
                 x.RequestBy == User.Username && (x.Status == "VOID" || x.Status == "REJECTED"));
@@ -629,7 +731,11 @@ namespace Pupa.Controllers
                  (x.ApprovedBy4 != null && x.ApprovedBy4.ToLower() == UsernameLower) ||
                  (x.ApprovedBy5 != null && x.ApprovedBy5.ToLower() == UsernameLower) ||
                  (x.ApprovedBy6 != null && x.ApprovedBy6.ToLower() == UsernameLower) ||
-                 (x.ApprovedBy7 != null && x.ApprovedBy7.ToLower() == UsernameLower))
+                 // v2's final step lands in ApprovedBy8, not the reserved
+                 // ApprovedBy7 (see GetRequisitionApprovedByName).
+                 (x.ApprovalRuleVersion == 2
+                    ? (x.ApprovedBy8 != null && x.ApprovedBy8.ToLower() == UsernameLower)
+                    : (x.ApprovedBy7 != null && x.ApprovedBy7.ToLower() == UsernameLower)))
                 && (x.RevertStatus == null || x.RevertStatus.ToLower() != "reverted")
                 && x.Status.ToLower() != "void" && x.Status.ToLower() != "rejected");
 
@@ -675,10 +781,12 @@ namespace Pupa.Controllers
                                 .Include(x => x.User)
                                 .Where(x => RelevantVesselGroupIds.Contains(x.VesselGroupID.Value))
                                 .ToListAsync();
-                            var ScopesV2 = await db.UserApprovalScope2.AsNoTracking()
-                                .Include(x => x.User)
-                                .Where(x => x.IsActive != false)
-                                .ToListAsync();
+                            var MandatoryVessels = await db.MandatoryVessel.AsNoTracking().ToListAsync();
+                            var MandatoryApprovers = await db.MandatoryVesselApprover.AsNoTracking().ToListAsync();
+                            var GroupMappings = await db.ItemGroupMapping.AsNoTracking().ToListAsync();
+                            var UserGroups = await db.UserApprovalGroup.AsNoTracking().ToListAsync();
+                            var UsersByUsernameLower = await db.User.AsNoTracking()
+                                .ToDictionaryAsync(x => x.Username.ToLower(), x => x);
                             var FamilyMap = await db.StockFamily.AsNoTracking().ToListAsync();
 
                             foreach (var r in RevertedCandidates)
@@ -696,7 +804,8 @@ namespace Pupa.Controllers
                                 }
                                 if (r.InventoryUser?.Group == null) continue;
                                 var Family = FamilyMap.FirstOrDefault(x => x.FamilyID == r.CategoryID);
-                                var Usernames = GetFullApproverUsernames(r, r.InventoryUser, Family, ScopesV1, ScopesV2);
+                                var Usernames = GetFullApproverUsernames(r, r.InventoryUser, Family, ScopesV1,
+                                    MandatoryVessels, MandatoryApprovers, GroupMappings, UserGroups, UsersByUsernameLower);
                                 if (Usernames.Contains(UsernameLower)) ApproverReverted++;
                             }
                         }
@@ -992,7 +1101,10 @@ namespace Pupa.Controllers
         // ever queried UserApprovalScope — always empty for v2 vessels).
         private HashSet<string> GetFullApproverUsernames(
             Requisition requisition, InventoryUser vessel, StockFamily? family,
-            List<UserApprovalScope> scopesV1, List<UserApprovalScope2> scopesV2)
+            List<UserApprovalScope> scopesV1,
+            List<MandatoryVessel> mandatoryVessels, List<MandatoryVesselApprover> mandatoryApprovers,
+            List<ItemGroupMapping> groupMappings, List<UserApprovalGroup> userGroups,
+            Dictionary<string, User> usersByUsernameLower)
         {
             var usernames = new HashSet<string>();
             bool hasFamily = family != null;
@@ -1000,11 +1112,12 @@ namespace Pupa.Controllers
             int? familyFamilyId = family?.FamilyID;
             var scopesInGroup = scopesV1.Where(x => x.VesselGroupID == vessel.Group!.ID).ToList();
 
-            for (int level = 1; level <= 7; level++)
+            for (int position = 1; position <= 7; position++)
             {
                 if (requisition.ApprovalRuleVersion == 2)
                 {
-                    var candidates = ResolveScopeCandidatesV2(scopesV2, vessel, familyCategoryId, familyFamilyId, level, requisition.Group, requisition.Department, requisition.SubDepartment);
+                    var candidates = ResolveScopeCandidatesV2(vessel, familyCategoryId, familyFamilyId, V2LevelLabel(position), requisition.Group, requisition.Department, requisition.SubDepartment,
+                        mandatoryVessels, mandatoryApprovers, groupMappings, userGroups, usersByUsernameLower);
                     foreach (var c in candidates)
                     {
                         if (!string.IsNullOrEmpty(c.User?.Username)) usernames.Add(c.User!.Username!.ToLower());
@@ -1012,7 +1125,7 @@ namespace Pupa.Controllers
                 }
                 else
                 {
-                    var candidates = ResolveScopeCandidatesV1(scopesInGroup, level, vessel.ID, hasFamily, familyCategoryId, familyFamilyId, requisition.Department, requisition.SubDepartment);
+                    var candidates = ResolveScopeCandidatesV1(scopesInGroup, position, vessel.ID, hasFamily, familyCategoryId, familyFamilyId, requisition.Department, requisition.SubDepartment);
                     foreach (var c in candidates)
                     {
                         if (!string.IsNullOrEmpty(c.User?.Username)) usernames.Add(c.User!.Username!.ToLower());
@@ -1202,14 +1315,18 @@ namespace Pupa.Controllers
                 // Each document's OWN snapshot decides the rule engine — not the
                 // vessel's current flag. Only loaded when at least one relevant
                 // requisition actually opted into v2 (v1-only requests don't pay
-                // for the extra query).
-                List<UserApprovalScope2> ScopesV2 = new();
+                // for the extra queries). See ResolveScopeCandidatesV2's comment
+                // for why these four tables, not UserApprovalScope2 (retired).
+                List<MandatoryVessel> MandatoryVessels = new();
+                List<MandatoryVesselApprover> MandatoryApprovers = new();
+                List<ItemGroupMapping> GroupMappings = new();
+                List<UserApprovalGroup> UserGroups = new();
                 if (Requisitions.Any(r => r.ApprovalRuleVersion == 2))
                 {
-                    ScopesV2 = await db.UserApprovalScope2.AsNoTracking()
-                        .Include(x => x.User)
-                        .Where(x => x.IsActive != false)
-                        .ToListAsync();
+                    MandatoryVessels = await db.MandatoryVessel.AsNoTracking().ToListAsync();
+                    MandatoryApprovers = await db.MandatoryVesselApprover.AsNoTracking().ToListAsync();
+                    GroupMappings = await db.ItemGroupMapping.AsNoTracking().ToListAsync();
+                    UserGroups = await db.UserApprovalGroup.AsNoTracking().ToListAsync();
                 }
 
                 var FamilyMap = await db.StockFamily.AsNoTracking().ToListAsync();
@@ -1217,20 +1334,7 @@ namespace Pupa.Controllers
                 var UserByUsernameLower = await db.User.AsNoTracking()
                     .ToDictionaryAsync(x => x.Username.ToLower(), x => x);
 
-                string? GetActualApproverName(Requisition Requisition, int level)
-                {
-                    return level switch
-                    {
-                        1 => Requisition.ApprovedBy1,
-                        2 => Requisition.ApprovedBy2,
-                        3 => Requisition.ApprovedBy3,
-                        4 => Requisition.ApprovedBy4,
-                        5 => Requisition.ApprovedBy5,
-                        6 => Requisition.ApprovedBy6,
-                        7 => Requisition.ApprovedBy7,
-                        _ => null
-                    };
-                }
+                string? GetActualApproverName(Requisition Requisition, int level) => GetRequisitionApprovedByName(Requisition, level);
 
                 // Group-combined documents: same rationale as CheckApprover above —
                 // a Group's DB Level values aren't required to be contiguous from 1,
@@ -1241,9 +1345,10 @@ namespace Pupa.Controllers
                 List<List<UserApprovalScope2>> ResolveGroupChain(Requisition Requisition, InventoryUser Vessel)
                 {
                     var chain = new List<List<UserApprovalScope2>>();
-                    for (int lvl = 1; lvl <= 7; lvl++)
+                    for (int position = 1; position <= 7; position++)
                     {
-                        var candidates = ResolveScopeCandidatesV2(ScopesV2, Vessel, null, null, lvl, Requisition.Group, Requisition.Department, Requisition.SubDepartment);
+                        var candidates = ResolveScopeCandidatesV2(Vessel, null, null, V2LevelLabel(position), Requisition.Group, Requisition.Department, Requisition.SubDepartment,
+                            MandatoryVessels, MandatoryApprovers, GroupMappings, UserGroups, UserByUsernameLower);
                         if (candidates.Count > 0) chain.Add(candidates);
                     }
                     return chain;
@@ -1262,7 +1367,8 @@ namespace Pupa.Controllers
                         var Family = FamilyMap.FirstOrDefault(x => x.FamilyID == Requisition.CategoryID);
                         var CandidatesV2 = (!string.IsNullOrEmpty(Requisition.Group)
                             ? (ResolveGroupChain(Requisition, Vessel).ElementAtOrDefault(Level - 1) ?? new List<UserApprovalScope2>())
-                            : ResolveScopeCandidatesV2(ScopesV2, Vessel, Family?.StockCategoryID, Family?.FamilyID, Level, Requisition.Group, Requisition.Department, Requisition.SubDepartment))
+                            : ResolveScopeCandidatesV2(Vessel, Family?.StockCategoryID, Family?.FamilyID, V2LevelLabel(Level), Requisition.Group, Requisition.Department, Requisition.SubDepartment,
+                                MandatoryVessels, MandatoryApprovers, GroupMappings, UserGroups, UserByUsernameLower))
                             .OrderBy(s => s.ID).ToList();
 
                         var IdsV2 = CandidatesV2.Where(s => s.UserID != null).Select(s => s.UserID!.Value).ToList();
@@ -1486,35 +1592,29 @@ namespace Pupa.Controllers
                             (x.ApprovedBy4 != null && x.ApprovedBy4.ToLower() == UserNameLower) ||
                             (x.ApprovedBy5 != null && x.ApprovedBy5.ToLower() == UserNameLower) ||
                             (x.ApprovedBy6 != null && x.ApprovedBy6.ToLower() == UserNameLower) ||
-                            (x.ApprovedBy7 != null && x.ApprovedBy7.ToLower() == UserNameLower)
+                            // v2's final step lands in ApprovedBy8, not the
+                            // reserved ApprovedBy7 (see GetRequisitionApprovedByName).
+                            (x.ApprovalRuleVersion == 2
+                                ? (x.ApprovedBy8 != null && x.ApprovedBy8.ToLower() == UserNameLower)
+                                : (x.ApprovedBy7 != null && x.ApprovedBy7.ToLower() == UserNameLower))
                         ) && x.Status != "PENDING" && x.Status != "VOID" && x.Status != "REJECTED")
                     .ToListAsync();
 
-                string? GetActualApproverName(Requisition Requisition, int level)
-                {
-                    return level switch
-                    {
-                        1 => Requisition.ApprovedBy1,
-                        2 => Requisition.ApprovedBy2,
-                        3 => Requisition.ApprovedBy3,
-                        4 => Requisition.ApprovedBy4,
-                        5 => Requisition.ApprovedBy5,
-                        6 => Requisition.ApprovedBy6,
-                        7 => Requisition.ApprovedBy7,
-                        _ => null
-                    };
-                }
+                string? GetActualApproverName(Requisition Requisition, int level) => GetRequisitionApprovedByName(Requisition, level);
 
                 var DoneList = new List<object>();
 
                 foreach (var Requisition in Requisitions)
                 {
                     // Bisa ada lebih dari 1 level yang di-approve oleh user yang sama
-                    for (int Level = 1; Level <= Requisition.ApprovalMaxLevel; Level++)
+                    for (int Position = 1; Position <= Requisition.ApprovalMaxLevel; Position++)
                     {
-                        var ApprovedByName = GetActualApproverName(Requisition, Level);
+                        var ApprovedByName = GetActualApproverName(Requisition, Position);
                         if (!string.IsNullOrWhiteSpace(ApprovedByName) && ApprovedByName.ToLower() == UserNameLower)
                         {
+                            // Display Level matches CheckApprover's convention: v2's
+                            // 7th step is shown as Level 8 (see GetRequisitionApprovedByName).
+                            var Level = Requisition.ApprovalRuleVersion == 2 ? V2LevelLabel(Position) : Position;
                             DoneList.Add(new
                             {
                                 Requisition.ID,
