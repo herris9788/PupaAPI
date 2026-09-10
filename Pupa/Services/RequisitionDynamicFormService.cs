@@ -46,14 +46,35 @@ namespace Pupa.Services
                 .FirstOrDefaultAsync();
         }
 
-        /// <summary>Effective schema untuk sebuah config (JSON string).</summary>
-        public string BuildEffectiveSchema(RequisitionFormConfig config)
+        /// <summary>
+        /// Template yang benar-benar dipakai untuk sebuah config Mode=Template:
+        ///   1. versi yang dipin di config.TemplateID — HANYA kalau masih
+        ///      IsActive && IsPublished (kalau admin men-draft-kan / nonaktifkan
+        ///      versi itu, wizard harus ikut mati);
+        ///   2. kalau tidak, versi published+aktif TERBARU dengan Code yang sama
+        ///      (jadi publish versi baru otomatis menggeser wizard maju);
+        ///   3. kalau tidak ada satupun -> null -> tidak ada wizard.
+        /// </summary>
+        public async Task<RequisitionFormTemplate?> ResolveEffectiveTemplateAsync(
+            BeesuiteDbContext db, RequisitionFormConfig config)
+        {
+            if (config.Template is { IsActive: true, IsPublished: true })
+                return config.Template;
+            var code = config.Template?.Code;
+            return string.IsNullOrWhiteSpace(code)
+                ? null
+                : await ResolveTemplateByCodeAsync(db, code!);
+        }
+
+        /// <summary>Effective schema (JSON string). effectiveTemplate = hasil
+        /// ResolveEffectiveTemplateAsync (null untuk Mode=Custom).</summary>
+        public string BuildEffectiveSchema(RequisitionFormConfig config, RequisitionFormTemplate? effectiveTemplate)
         {
             if (config.Mode == "Custom")
                 return string.IsNullOrWhiteSpace(config.SchemaJson) ? "{}" : config.SchemaJson!;
 
             // Mode == "Template"
-            var baseSchema = config.Template?.SchemaJson ?? "{}";
+            var baseSchema = effectiveTemplate?.SchemaJson ?? "{}";
             if (string.IsNullOrWhiteSpace(config.SchemaJson))
                 return baseSchema;
 
@@ -67,6 +88,17 @@ namespace Pupa.Services
             {
                 return baseSchema; // override tak valid -> jangan blokir, pakai template apa adanya
             }
+        }
+
+        /// <summary>True kalau schema punya minimal satu step berisi field —
+        /// draft kosong / schema "{}" dianggap "tidak ada wizard".</summary>
+        private static bool SchemaHasSteps(JsonNode? schema)
+        {
+            if (schema is not JsonObject obj) return false;
+            if (obj["steps"] is JsonArray steps && steps.OfType<JsonObject>().Any(
+                    s => s["fields"] is JsonArray f && f.Count > 0))
+                return true;
+            return obj["fields"] is JsonArray flat && flat.Count > 0;
         }
 
         public sealed class EffectiveSchemaResult
@@ -86,16 +118,24 @@ namespace Pupa.Services
         {
             var result = new EffectiveSchemaResult { EntityType = entityType, ItemCode = itemCode };
             var config = await ResolveConfigAsync(db, itemCode, entityType);
-            if (config != null)
+            if (config == null) return result; // tidak ada config -> tidak ada wizard
+
+            RequisitionFormTemplate? tpl = null;
+            if (config.Mode == "Template")
             {
-                var schema = BuildEffectiveSchema(config);
-                result.HasConfig = true;
-                result.ConfigID = config.ID;
-                result.TemplateID = config.Mode == "Template" ? config.TemplateID : null;
-                result.TemplateCode = config.Template?.Code;
-                result.TemplateVersion = config.Template?.Version;
-                result.Schema = SafeParse(schema);
+                tpl = await ResolveEffectiveTemplateAsync(db, config);
+                if (tpl == null) return result; // template di-draft-kan / nonaktif / hilang -> tidak ada wizard
             }
+
+            var schemaNode = SafeParse(BuildEffectiveSchema(config, tpl));
+            if (!SchemaHasSteps(schemaNode)) return result; // schema kosong -> tidak ada wizard
+
+            result.HasConfig = true;
+            result.ConfigID = config.ID;
+            result.TemplateID = tpl?.ID;
+            result.TemplateCode = tpl?.Code;
+            result.TemplateVersion = tpl?.Version;
+            result.Schema = schemaNode;
             return result;
         }
 
@@ -133,9 +173,15 @@ namespace Pupa.Services
             var config = await ResolveConfigAsync(db, itemCode, entityType);
             if (config != null)
             {
-                schema = BuildEffectiveSchema(config);
+                // Best-effort: pakai template efektif; kalau wizard sudah
+                // dimatikan sejak user membuka form, jangan hilangkan input yang
+                // sudah diisi — pakai versi yang dipin sebagai fallback snapshot.
+                RequisitionFormTemplate? tpl = config.Mode == "Template"
+                    ? (await ResolveEffectiveTemplateAsync(db, config) ?? config.Template)
+                    : null;
+                schema = BuildEffectiveSchema(config, tpl);
                 configId = config.ID;
-                templateId = config.Mode == "Template" ? config.TemplateID : null;
+                templateId = tpl?.ID ?? (config.Mode == "Template" ? config.TemplateID : null);
             }
             else if (!string.IsNullOrWhiteSpace(templateCode))
             {
@@ -311,7 +357,13 @@ namespace Pupa.Services
             string? schema = null;
 
             var config = await ResolveConfigAsync(db, itemCode, entityType);
-            if (config != null) schema = BuildEffectiveSchema(config);
+            if (config != null)
+            {
+                RequisitionFormTemplate? tpl = config.Mode == "Template"
+                    ? (await ResolveEffectiveTemplateAsync(db, config) ?? config.Template)
+                    : null;
+                schema = BuildEffectiveSchema(config, tpl);
+            }
             else if (!string.IsNullOrWhiteSpace(templateCode))
                 schema = (await ResolveTemplateByCodeAsync(db, templateCode!))?.SchemaJson;
 
