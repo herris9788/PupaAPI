@@ -81,7 +81,8 @@ namespace Pupa.Configs
             typeof(CartItemAttachment),
             typeof(QuickOrderItem),
             typeof(ItemEquivalent),
-            typeof(ItemGroupMapping)
+            typeof(ItemGroupMapping),
+            typeof(UserApprovalGroup)
         };
         public static readonly Type[] EntityTypesExternal = new Type[] {
           //typeof(SH_01), typeof(SH_02)
