@@ -35,6 +35,8 @@ namespace Pupa.BusinessObjects
         public DbSet<ApprovalGroup> ApprovalGroup { get; set; }
         public DbSet<ItemGroupMapping> ItemGroupMapping { get; set; }
         public DbSet<UserApprovalGroup> UserApprovalGroup { get; set; }
+        public DbSet<MandatoryVessel> MandatoryVessel { get; set; }
+        public DbSet<MandatoryVesselApprover> MandatoryVesselApprover { get; set; }
         public DbSet<UOM> UOM { get; set; }
         public DbSet<ItemCategory> ItemCategory { get; set; }
         public DbSet<ServiceCategory> ServiceCategory { get; set; }

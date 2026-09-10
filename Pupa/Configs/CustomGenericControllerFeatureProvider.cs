@@ -83,7 +83,9 @@ namespace Pupa.Configs
             typeof(ItemEquivalent),
             typeof(ApprovalGroup),
             typeof(ItemGroupMapping),
-            typeof(UserApprovalGroup)
+            typeof(UserApprovalGroup),
+            typeof(MandatoryVessel),
+            typeof(MandatoryVesselApprover)
         };
         public static readonly Type[] EntityTypesExternal = new Type[] {
           //typeof(SH_01), typeof(SH_02)
