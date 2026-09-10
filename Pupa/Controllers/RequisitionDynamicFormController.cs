@@ -52,6 +52,25 @@ namespace Pupa.Controllers
             return t == null ? NotFound() : Ok(t);
         }
 
+        /// <summary>Berapa config (& ItemCode mana) yang masih menunjuk ke template
+        /// ini — dipakai UI untuk cek sebelum Delete / Unpublish.</summary>
+        [HttpGet("template/{id:int}/usage")]
+        public async Task<IActionResult> GetTemplateUsage(int id)
+        {
+            if (!await _db.RequisitionFormTemplate.AnyAsync(x => x.ID == id)) return NotFound();
+            var configs = await _db.RequisitionFormConfig.AsNoTracking()
+                .Where(c => c.TemplateID == id)
+                .Select(c => new { c.ID, c.ItemCode, c.EntityType, c.IsActive })
+                .ToListAsync();
+            return Ok(new
+            {
+                templateId = id,
+                configCount = configs.Count,
+                itemCodes = configs.Select(c => c.ItemCode).Distinct().ToList(),
+                configs,
+            });
+        }
+
         [HttpPost("template")]
         public async Task<IActionResult> CreateTemplate([FromBody] RequisitionFormTemplate body)
         {
@@ -91,6 +110,43 @@ namespace Pupa.Controllers
             var t = await _db.RequisitionFormTemplate.FirstOrDefaultAsync(x => x.ID == id);
             if (t == null) return NotFound();
             t.IsPublished = true;
+            t.UpdatedAt = DateTime.Now;
+            await _db.SaveChangesAsync();
+            return Ok(t);
+        }
+
+        /// <summary>
+        /// Kembalikan template published jadi DRAFT (bisa diedit lagi via PUT).
+        /// Efek samping: item yang dipin ke versi ini kehilangan wizard-nya,
+        /// KECUALI ada versi published+aktif lain dengan Code sama — resolusi
+        /// effective-schema akan fallback ke sana (lihat ResolveEffectiveTemplateAsync).
+        /// Alternatif non-destruktif: PUT template/{id} dengan IsActive=false
+        /// (hanya untuk draft) atau nonaktifkan lewat endpoint ini + PUT.
+        /// </summary>
+        [HttpPost("template/{id:int}/unpublish")]
+        public async Task<IActionResult> UnpublishTemplate(int id)
+        {
+            var t = await _db.RequisitionFormTemplate.FirstOrDefaultAsync(x => x.ID == id);
+            if (t == null) return NotFound();
+            if (!t.IsPublished) return Ok(t); // idempoten
+            t.IsPublished = false;
+            t.UpdatedAt = DateTime.Now;
+            await _db.SaveChangesAsync();
+            return Ok(t);
+        }
+
+        /// <summary>Set IsActive tanpa menyentuh IsPublished / SchemaJson — boleh
+        /// dipakai pada template published untuk "matikan wizard" tanpa mengubah
+        /// statusnya jadi draft. Body: { "isActive": true|false }.</summary>
+        [HttpPost("template/{id:int}/active")]
+        public async Task<IActionResult> SetTemplateActive(int id, [FromBody] JsonElement body)
+        {
+            var t = await _db.RequisitionFormTemplate.FirstOrDefaultAsync(x => x.ID == id);
+            if (t == null) return NotFound();
+            if (body.ValueKind != JsonValueKind.Object || !body.TryGetProperty("isActive", out var v)
+                || (v.ValueKind != JsonValueKind.True && v.ValueKind != JsonValueKind.False))
+                return BadRequest("Body harus { \"isActive\": true|false }.");
+            t.IsActive = v.GetBoolean();
             t.UpdatedAt = DateTime.Now;
             await _db.SaveChangesAsync();
             return Ok(t);
