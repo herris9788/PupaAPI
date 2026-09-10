@@ -414,11 +414,16 @@ namespace Pupa.Controllers
         //      Category/Family is mapped to one or more business "Group"
         //      names via ItemGroupMapping (FamilyID == null on a mapping row
         //      means "any family under this Category" — same wildcard
-        //      convention used throughout this app), then every user scoped
-        //      to any of those Groups in UserApprovalGroup is an eligible
-        //      approver. A Group-combined document (Requisition.Group already
-        //      set) skips the Category/Family derivation and matches that
-        //      Group name directly, same as before.
+        //      convention used throughout this app), then the user(s) scoped
+        //      to any of those Groups in UserApprovalGroup AT THE MATCHING
+        //      GROUP-RELATIVE LEVEL are the eligible approvers.
+        //      UserApprovalGroup.Level is 1-based and starts right after the
+        //      mandatory cutoff — so a mandatory vessel with cutoff 3 uses
+        //      Group Level 1 at chain position 4, Level 2 at position 5, etc.;
+        //      a non-mandatory vessel uses Group Level 1 at position 1. A
+        //      Group-combined document (Requisition.Group already set) skips
+        //      the Category/Family derivation and matches that Group name
+        //      directly, same as before.
         //
         // Department/SubDepartment are still accepted as parameters (so every
         // call site below didn't need to change its own signature) but are no
@@ -487,8 +492,19 @@ namespace Pupa.Controllers
 
             if (ResolvedGroups.Count == 0) return new List<UserApprovalScope2>();
 
+            // UserApprovalGroup.Level is group-relative (1-based). The real
+            // approval-chain position for the step we're resolving is the
+            // sequence position (Level here is the label, so undo the 7->8
+            // shift first), and the Group tier starts right after the vessel's
+            // mandatory cutoff — so group-relative level = position - cutoff
+            // (cutoff 0 for a non-mandatory vessel).
+            int Position = Level == 8 ? 7 : Level;
+            int Cutoff = Mandatory?.MandatoryLevelCutoff ?? 0;
+            int GroupRelativeLevel = Position - Cutoff;
+            if (GroupRelativeLevel < 1) return new List<UserApprovalScope2>();
+
             var GroupUsernames = UserGroups
-                .Where(u => ResolvedGroups.Contains(u.GroupName))
+                .Where(u => ResolvedGroups.Contains(u.GroupName) && u.Level == GroupRelativeLevel)
                 .Select(u => u.Username);
             return BuildResult(GroupUsernames, ResolvedGroups.Count == 1 ? ResolvedGroups[0] : string.Join(", ", ResolvedGroups));
         }

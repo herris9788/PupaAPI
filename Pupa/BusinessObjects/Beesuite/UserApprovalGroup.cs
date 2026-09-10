@@ -22,6 +22,16 @@ namespace Pupa.BusinessObjects.Beesuite
         private int _groupID;
         public virtual int GroupID { get => _groupID; set { OnPropertyChanging(); _groupID = value; OnPropertyChanged(); } }
 
+        // Group-relative approval level, 1-based. The resolver offsets this by
+        // the vessel's MandatoryLevelCutoff to get the real approval-chain
+        // position: for a mandatory vessel with cutoff C, this Level L is the
+        // real position C + L; for a non-mandatory vessel the Group tier
+        // starts at position 1, so Level L is position L directly. The real
+        // position's stored/matched label still shifts 7 -> 8 (see
+        // GetRequisitionApprovedByName / V2LevelLabel).
+        private short _level = 1;
+        public virtual short Level { get => _level; set { OnPropertyChanging(); _level = value; OnPropertyChanged(); } }
+
         private DateTime? _createdAt;
         public virtual DateTime? CreatedAt { get => _createdAt; set { OnPropertyChanging(); _createdAt = value; OnPropertyChanged(); } }
     }
