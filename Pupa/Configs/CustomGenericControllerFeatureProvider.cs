@@ -81,6 +81,7 @@ namespace Pupa.Configs
             typeof(CartItemAttachment),
             typeof(QuickOrderItem),
             typeof(ItemEquivalent),
+            typeof(ApprovalGroup),
             typeof(ItemGroupMapping),
             typeof(UserApprovalGroup)
         };

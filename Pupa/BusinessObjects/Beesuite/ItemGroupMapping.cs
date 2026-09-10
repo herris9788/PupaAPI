@@ -17,6 +17,11 @@ namespace Pupa.BusinessObjects.Beesuite
         private string _groupName = string.Empty;
         public virtual string GroupName { get => _groupName; set { OnPropertyChanging(); _groupName = value; OnPropertyChanged(); } }
 
+        // FK -> ApprovalGroup.ID (the real relational link; GroupName above is
+        // kept as a denormalized display copy).
+        private int _groupID;
+        public virtual int GroupID { get => _groupID; set { OnPropertyChanging(); _groupID = value; OnPropertyChanged(); } }
+
         private int _stockCategoryID;
         public virtual int StockCategoryID { get => _stockCategoryID; set { OnPropertyChanging(); _stockCategoryID = value; OnPropertyChanged(); } }
 
