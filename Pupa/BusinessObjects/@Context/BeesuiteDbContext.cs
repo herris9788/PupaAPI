@@ -32,6 +32,7 @@ namespace Pupa.BusinessObjects
         }
         public DbSet<Item> Item { get; set; }
         public DbSet<ItemEquivalent> ItemEquivalent { get; set; }
+        public DbSet<ItemGroupMapping> ItemGroupMapping { get; set; }
         public DbSet<UOM> UOM { get; set; }
         public DbSet<ItemCategory> ItemCategory { get; set; }
         public DbSet<ServiceCategory> ServiceCategory { get; set; }
