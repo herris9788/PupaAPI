@@ -1238,7 +1238,14 @@ namespace Pupa.Controllers
                         7 => Job.ApprovedBy7,
                         _ => null
                     };
-                    int MaxLevel = Job.ApprovalMaxLevel > 0 ? Job.ApprovalMaxLevel : 7;
+                    // Job.ApprovalMaxLevel is never actually populated by the
+                    // client at creation (unlike Requisition.ApprovalMaxLevel)
+                    // and defaults to 1 in the entity, so trusting it here
+                    // would silently cap every job's pending-detection at
+                    // Level 1 regardless of the real chain length (v1 or v2).
+                    // ResolveApprovers already computed the true max level
+                    // live (mirrors Requisition's own self-heal) — use that.
+                    int MaxLevel = (int?)Payload.Data.ApprovalMaxLevel ?? 7;
                     int PendingLevel = MaxLevel + 1; // default: fully signed already
                     for (int i = 1; i <= MaxLevel; i++)
                     {
