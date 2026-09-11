@@ -525,8 +525,15 @@ namespace Pupa.Controllers
         // there's no Requisition snapshot yet to read) as everywhere else,
         // rather than being recomputed client-side against UserApprovalScope
         // only. Returns one Items[] entry per level (1-7) that resolved to an
-        // approver; ApprovalMaxLevel = Items.Count (a level with no match is
-        // simply absent, matching how the client used to count matched rows).
+        // approver. V1: ApprovalMaxLevel = Items.Count (a level with no match
+        // is simply absent, matching how the client used to count matched
+        // rows). V2: ApprovalMaxLevel = the HIGHEST level position that
+        // resolved to anyone, not the match count — an item's Category/Family
+        // can map to more than one ItemGroupMapping Group, and those Groups
+        // aren't required to use the same UserApprovalGroup.Level numbers, so
+        // matched positions can have gaps (e.g. Group A only configured at
+        // Level 1, Group B only at Level 3); using the count there would stop
+        // the chain short of Group B's real final level.
         [HttpGet("ResolveApprovers")]
         public async Task<IActionResult> ResolveApprovers([FromQuery] ResolveApproversDTO Query)
         {
@@ -572,6 +579,9 @@ namespace Pupa.Controllers
                 var HasCategoryContext = FamilyStockCategoryID != null;
 
                 var ResolveMatrix = new List<object>();
+                // See the V2MaxLevel assignment below for why this can't just be
+                // ResolveMatrix.Count for v2.
+                int V2MaxLevel = 0;
 
                 if (Vessel.ApprovalRuleVersion == 2)
                 {
@@ -600,6 +610,19 @@ namespace Pupa.Controllers
                             .OrderBy(s => s.ID)
                             .ToList();
                         if (Candidates.Count == 0) continue;
+
+                        // An item's Category/Family can map to more than one business
+                        // Group (ItemGroupMapping rows sharing a Family but different
+                        // COACode/Group) — ResolveScopeCandidatesV2 already unions
+                        // every matching Group's approvers at a given level, but the
+                        // Groups aren't guaranteed to all use the same Level numbers
+                        // (e.g. Group A only has a Level 1 approver, Group B only a
+                        // Level 3 one) — same non-contiguous-Level allowance as
+                        // Group-combined documents already have. Track the highest
+                        // matching Position seen (not just the count of matches) so
+                        // ApprovalMaxLevel reaches that Group's real final level
+                        // instead of stopping short at the total match count.
+                        V2MaxLevel = Position;
 
                         var UserIds = Candidates.Select(s => s.UserID!.Value).ToList();
                         var Usernames = Candidates.Where(s => s.User?.Username != null).Select(s => s.User!.Username!).ToList();
@@ -660,7 +683,7 @@ namespace Pupa.Controllers
                     Data = new
                     {
                         Items = ResolveMatrix,
-                        ApprovalMaxLevel = ResolveMatrix.Count,
+                        ApprovalMaxLevel = Vessel.ApprovalRuleVersion == 2 ? V2MaxLevel : ResolveMatrix.Count,
                         ApprovalRuleVersion = Vessel.ApprovalRuleVersion ?? 1
                     }
                 });
