@@ -32,8 +32,8 @@ namespace Pupa.BusinessObjects.Beesuite
         private short _level = 1;
         public virtual short Level { get => _level; set { OnPropertyChanging(); _level = value; OnPropertyChanged(); } }
 
-        // Optional vessel-type scope (e.g. "TANKER I", "BULK CARRIER") -- NULL means this
-        // assignment applies to every fleet (same wildcard convention as
+        // Optional coarse vessel-type scope (e.g. "TANKER", "BULK CARRIER", "TUG BOAT") --
+        // NULL means this assignment applies to every fleet (same wildcard convention as
         // ItemGroupMapping.FamilyID == null). Matched against InventoryUser.Fleet in
         // ResolveScopeCandidatesV2.
         private string? _fleet;

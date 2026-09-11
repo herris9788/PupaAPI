@@ -417,9 +417,10 @@ namespace Pupa.Controllers
         //      convention used throughout this app), then the user(s) scoped
         //      to any of those Groups in UserApprovalGroup AT THE MATCHING
         //      GROUP-RELATIVE LEVEL are the eligible approvers. A row may also
-        //      carry a Fleet (e.g. "TANKER I", "BULK CARRIER" — sourced from
-        //      InventoryUser.Fleet, itself backfilled once from SQL Server
-        //      API.Ascend.Vessel.Fleet, not live-synced): NULL matches every
+        //      carry a coarse Fleet bucket (e.g. "TANKER", "BULK CARRIER",
+        //      "TUG BOAT" — sourced from InventoryUser.Fleet, itself derived
+        //      from SQL Server API.Ascend.Vessel.Fleet's finer-grained label
+        //      and backfilled once, not live-synced): NULL matches every
         //      fleet, a set value restricts that row to vessels of that fleet.
         //      UserApprovalGroup.Level is 1-based and starts right after the
         //      mandatory cutoff — so a mandatory vessel with cutoff 3 uses

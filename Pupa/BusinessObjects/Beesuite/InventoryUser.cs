@@ -276,8 +276,10 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _ApprovalRuleVersion;
             set { OnPropertyChanging(); _ApprovalRuleVersion = value; OnPropertyChanged(); }
         }
-        /// <summary>Vessel-type category (e.g. "TANKER I", "BULK CARRIER", "TOWING BARGE") --
-        /// sourced from SQL Server API.Ascend.Vessel.Fleet, backfilled once (not live-synced).
+        /// <summary>Coarse vessel-type bucket (e.g. "TANKER", "BULK CARRIER", "TOWING",
+        /// "TUG BOAT") -- derived from SQL Server API.Ascend.Vessel.Fleet (which actually
+        /// stores the finer "Inventory User Group" style label, e.g. "TANKER I", "TUG BOAT
+        /// BELAWAN") collapsed to its bucket, backfilled once (not live-synced).
         /// Matched by ResolveScopeCandidatesV2 against UserApprovalGroup.Fleet.</summary>
         private string? _Fleet { get; set; }
         [Column("Fleet")]
