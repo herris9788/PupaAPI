@@ -416,7 +416,11 @@ namespace Pupa.Controllers
         //      means "any family under this Category" — same wildcard
         //      convention used throughout this app), then the user(s) scoped
         //      to any of those Groups in UserApprovalGroup AT THE MATCHING
-        //      GROUP-RELATIVE LEVEL are the eligible approvers.
+        //      GROUP-RELATIVE LEVEL are the eligible approvers. A row may also
+        //      carry a Fleet (e.g. "TANKER I", "BULK CARRIER" — sourced from
+        //      InventoryUser.Fleet, itself backfilled once from SQL Server
+        //      API.Ascend.Vessel.Fleet, not live-synced): NULL matches every
+        //      fleet, a set value restricts that row to vessels of that fleet.
         //      UserApprovalGroup.Level is 1-based and starts right after the
         //      mandatory cutoff — so a mandatory vessel with cutoff 3 uses
         //      Group Level 1 at chain position 4, Level 2 at position 5, etc.;
@@ -504,7 +508,8 @@ namespace Pupa.Controllers
             if (GroupRelativeLevel < 1) return new List<UserApprovalScope2>();
 
             var GroupUsernames = UserGroups
-                .Where(u => ResolvedGroups.Contains(u.GroupName) && u.Level == GroupRelativeLevel)
+                .Where(u => ResolvedGroups.Contains(u.GroupName) && u.Level == GroupRelativeLevel
+                            && (string.IsNullOrEmpty(u.Fleet) || string.Equals(u.Fleet, Vessel.Fleet, StringComparison.OrdinalIgnoreCase)))
                 .Select(u => u.Username);
             return BuildResult(GroupUsernames, ResolvedGroups.Count == 1 ? ResolvedGroups[0] : string.Join(", ", ResolvedGroups));
         }

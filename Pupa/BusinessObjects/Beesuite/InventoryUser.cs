@@ -276,6 +276,16 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _ApprovalRuleVersion;
             set { OnPropertyChanging(); _ApprovalRuleVersion = value; OnPropertyChanged(); }
         }
+        /// <summary>Vessel-type category (e.g. "TANKER I", "BULK CARRIER", "TOWING BARGE") --
+        /// sourced from SQL Server API.Ascend.Vessel.Fleet, backfilled once (not live-synced).
+        /// Matched by ResolveScopeCandidatesV2 against UserApprovalGroup.Fleet.</summary>
+        private string? _Fleet { get; set; }
+        [Column("Fleet")]
+        public virtual string? Fleet
+        {
+            get => _Fleet;
+            set { OnPropertyChanging(); _Fleet = value; OnPropertyChanged(); }
+        }
 
         #endregion
         public virtual ObservableCollection<UserVesselRel>? UserVesselRels { get; set; }
