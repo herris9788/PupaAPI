@@ -8,17 +8,16 @@ using System.Text.Json.Serialization;
 
 namespace Pupa.Controllers
 {
-    // Creates a JobRequest with its whole nested graph (Jobs -> JobDetails,
-    // Jobs -> Attachments [JobAttachment, per-item], and the JobRequest's own
-    // Attachments [JobRequestAttachment, document-level]) in one call — the
-    // Job Request equivalent of RequisitionController.CreateRequisition,
-    // replacing the external Go backend's POST /api/v5/job-request. Every
-    // nested navigation collection here (JobRequest.Jobs, Job.JobDetails,
-    // JobRequest.Attachments, Job.Attachments) is already wired via
-    // [ForeignKey] attributes on the child entities with no Fluent API
-    // overrides, so a single _db.AddAsync(Body) + SaveChangesAsync() lets EF
-    // Core cascade-insert the entire graph in one transaction, exactly like
-    // RequisitionController does for Requisition -> RequisitionDetails.
+    // Creates a JobRequest with its nested Jobs, each job's own Attachments
+    // [JobAttachment, per-item], and the JobRequest's own Attachments
+    // [JobRequestAttachment, document-level] in one call — the Job Request
+    // equivalent of RequisitionController.CreateRequisition, replacing the
+    // external Go backend's POST /api/v5/job-request. JobRequest.Jobs,
+    // JobRequest.Attachments, and Job.Attachments all use a normal separate-
+    // identity-PK + FK-column shape (same as Requisition.RequisitionDetails,
+    // the already-proven cascade pattern), so a single _db.AddAsync(Body) +
+    // SaveChangesAsync() lets EF Core cascade-insert them together in one
+    // transaction. Job.JobDetails is handled separately (see below).
     [Route("beesuite/api/[controller]")]
     public class JobRequestController : Controller
     {
@@ -72,7 +71,19 @@ namespace Pupa.Controllers
                 string? OtherPurpose = RawBody.TryGetProperty("OtherPurpose", out var opEl) && opEl.ValueKind == JsonValueKind.String
                     ? opEl.GetString() : null;
 
-                var vessel = await _db.InventoryUser.FirstOrDefaultAsync(x => x.ID == Body.VesselID);
+                // JobRequest.VesselID has always stored InventoryUser.
+                // InventoryUserID (the business id), NOT InventoryUser.ID
+                // (the surrogate PK) — confirmed against every real
+                // JobRequest row created via the old Go backend (e.g.
+                // JobRequest.VesselID=151 -> InventoryUserID=151 resolves to
+                // MV. AMETHYST; InventoryUser.ID=151 is an unrelated row).
+                // Matching by ID here previously resolved to the wrong
+                // vessel entirely. InventoryUserID alone isn't unique either
+                // (live data has several unrelated vessels sharing the same
+                // InventoryUserID), so also match VesselName — the client
+                // already sends both from the same Vessel object.
+                var vessel = await _db.InventoryUser.FirstOrDefaultAsync(
+                    x => x.InventoryUserID == Body.VesselID && x.InventoryUserName == Body.VesselName);
                 if (vessel == null)
                     return NotFound($"Vessel with ID {Body.VesselID} not found.");
 
@@ -132,11 +143,25 @@ namespace Pupa.Controllers
                     await _db.SaveChangesAsync();
                 }
 
-                // Trim the nested graph before returning, matching
-                // CreateRequisition's own response shape (avoids echoing the
-                // whole just-inserted graph back, including now-stale
-                // in-memory nav collections).
-                Body.Jobs = new ObservableCollection<Job>();
+                // Job.JobDetails is deliberately NOT part of this cascade —
+                // JobDetail's PK is also its FK to Job (shared primary key,
+                // DatabaseGeneratedOption.None), an association shape no
+                // other cascade-insert in this codebase exercises yet. Safer
+                // to create each JobDetail as its own explicit, already-
+                // proven POST /odata/JobDetail call once this response hands
+                // back each Job's real (now-generated) ID — see
+                // JobRequestApi.submitFullRequest's second phase.
+                //
+                // Trim the nested graph before returning (mirrors
+                // CreateRequisition not echoing RequisitionDetails back) —
+                // but keep each Job's ID/SequenceNo so the client can match
+                // its own per-job data back to the right Job for that
+                // JobDetail follow-up call.
+                foreach (var job in Body.Jobs)
+                {
+                    job.Attachments = new ObservableCollection<JobAttachment>();
+                    job.JobDetails = new ObservableCollection<JobDetail>();
+                }
                 Body.Attachments = new ObservableCollection<JobRequestAttachment>();
                 return Ok(Body);
             }
