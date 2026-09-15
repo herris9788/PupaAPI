@@ -88,6 +88,17 @@ namespace Pupa.Controllers
                 if (vessel == null)
                     return NotFound($"Vessel with ID {Body.VesselID} not found.");
 
+                // VesselInventoryUserRowID/VesselInventoryUserDB (the real
+                // InventoryUser.ID/DB, despite the "RowID" name) are what
+                // every listing/tracking page (Track Item, Approval pages,
+                // PendingApprovalsHelper, VesselApproval.dart, mobile
+                // ApprovalDetail's own vessel resolution) actually matches
+                // Job Requests to their vessel by — NOT VesselID (the
+                // business id). Left unset, a new JobRequest silently never
+                // shows up anywhere despite existing in the table.
+                Body.VesselInventoryUserRowID = vessel.ID;
+                Body.VesselInventoryUserDB = vessel.DB;
+
                 // Same <VC><YY><MM><N4> template substitution as
                 // RequisitionController.CreateRequisition's ReportNo
                 // generation — the "JobRequest" DocumentNumbering.Type row
@@ -129,6 +140,51 @@ namespace Pupa.Controllers
                 Body.UpdatedAt = now;
                 Body.Status = "Submitted";
                 Body.ApprovalStatus = "Pending";
+                Body.Approved = false;
+
+                // Each Job gets its own real ServiceOrderNo (format
+                // "SO<VC><YY><MM><N4>", same DocumentNumbering.Type=
+                // "ServiceOrder" row every vessel already has) instead of
+                // the client's literal "AUTO" placeholder — mirrors
+                // ReportNo's own generation above. Numbered sequentially
+                // against the highest existing Job.ServiceOrderNo with this
+                // prefix, then bumped per job within this same request too
+                // (a submission can create several jobs at once).
+                var soFormat = await _db.DocumentNumbering.FirstOrDefaultAsync(
+                    x => x.Vessel == vessel.InventoryUserName && x.Type == "ServiceOrder");
+                if (soFormat != null)
+                {
+                    var soPrefix = soFormat.Format
+                        .Replace("<VC>", soFormat.VesselCode)
+                        .Replace("<YY>", yearStr)
+                        .Replace("<MM>", monthStr)
+                        .Replace("<N4>", "");
+                    var lastSo = await _db.Job
+                        .Where(x => x.ServiceOrderNo != null && x.ServiceOrderNo.StartsWith(soPrefix) &&
+                                    x.CreatedAt.Year == now.Year && x.CreatedAt.Month == now.Month)
+                        .OrderByDescending(x => x.ServiceOrderNo)
+                        .Select(x => x.ServiceOrderNo)
+                        .FirstOrDefaultAsync();
+                    int nextSoNumber = 1;
+                    if (lastSo != null)
+                    {
+                        var lastSoSeq = lastSo!.Substring(soPrefix.Length);
+                        if (int.TryParse(lastSoSeq, out int parsedSo))
+                            nextSoNumber = parsedSo + 1;
+                    }
+                    foreach (var job in Body.Jobs)
+                    {
+                        job.ServiceOrderNo = soFormat.Format
+                            .Replace("<VC>", soFormat.VesselCode)
+                            .Replace("<YY>", yearStr)
+                            .Replace("<MM>", monthStr)
+                            .Replace("<N4>", nextSoNumber.ToString("D4"));
+                        nextSoNumber++;
+                        job.CreatedBy = Body.CreatedBy;
+                        job.CreatedAt = now;
+                        job.UpdatedAt = now;
+                    }
+                }
 
                 // StorageProvider/PreviewUrl are NOT NULL columns on both
                 // JobRequestAttachment and JobAttachment (legacy rows always
