@@ -71,6 +71,18 @@ namespace Pupa.BusinessObjects.Beesuite
             set { OnPropertyChanging(); _previewUrl = value; OnPropertyChanged(); }
         }
 
+        // File bytes for attachments created directly via Pupa's own OData
+        // API (self-contained, no external object storage) — mirrors
+        // Attachment.Base64. Legacy rows created via the Go backend instead
+        // use PreviewUrl/StorageKey to point at external storage and leave
+        // this null.
+        private string? _base64;
+        public virtual string? Base64
+        {
+            get => _base64;
+            set { OnPropertyChanging(); _base64 = value; OnPropertyChanged(); }
+        }
+
         private int? _fileSize;
         public virtual int? FileSize
         {
