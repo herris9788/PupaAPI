@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Pupa.BusinessObjects.Beesuite;
 using Pupa.BusinessObjects;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -128,6 +129,26 @@ namespace Pupa.Controllers
                 Body.UpdatedAt = now;
                 Body.Status = "Submitted";
                 Body.ApprovalStatus = "Pending";
+
+                // StorageProvider/PreviewUrl are NOT NULL columns on both
+                // JobRequestAttachment and JobAttachment (legacy rows always
+                // had a real object-storage location here) — a client
+                // sending only Base64 (self-contained, no external storage)
+                // still needs a placeholder for these or the insert violates
+                // that constraint.
+                foreach (var att in Body.Attachments)
+                {
+                    att.StorageProvider ??= "database";
+                    att.PreviewUrl ??= "";
+                }
+                foreach (var job in Body.Jobs)
+                {
+                    foreach (var att in job.Attachments ?? Enumerable.Empty<JobAttachment>())
+                    {
+                        att.StorageProvider ??= "database";
+                        att.PreviewUrl ??= "";
+                    }
+                }
 
                 await _db.AddAsync(Body);
                 await _db.SaveChangesAsync();
