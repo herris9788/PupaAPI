@@ -435,15 +435,27 @@ namespace Pupa.Services
             try { return JsonNode.Parse(json); } catch { return null; }
         }
 
-        private static IEnumerable<JsonObject> FieldsOf(JsonNode? schema)
+        /// Field dari step yang SEDANG TAMPIL saja (step.visibleWhen dievaluasi
+        /// terhadap [values]). Field renderer FE cuma pernah menampilkan field di
+        /// step yang visible (tidak ada visibleWhen per-field, cuma per-step —
+        /// lihat DynamicFormWizardRenderer._visibleSteps) — kalau ini tidak
+        /// mengikuti, field wajib di step yang disembunyikan (mis. "Audit Result"
+        /// yang cuma tampil kalau Purpose = Audit Findings) akan tetap dianggap
+        /// wajib untuk kondisi lain (mis. Purpose = New Cargo) dan submit gagal
+        /// 400 padahal user tidak pernah melihat field itu.
+        private static IEnumerable<JsonObject> FieldsOf(JsonNode? schema, JsonObject values)
         {
             if (schema is not JsonObject obj) yield break;
             if (obj["steps"] is JsonArray steps)
             {
                 foreach (var step in steps.OfType<JsonObject>())
+                {
+                    if (step["visibleWhen"]?.GetValue<string>() is string vw && !EvalCondition(vw, values))
+                        continue;
                     if (step["fields"] is JsonArray fields)
                         foreach (var f in fields.OfType<JsonObject>())
                             yield return f;
+                }
             }
             else if (obj["fields"] is JsonArray flat)
             {
@@ -460,7 +472,7 @@ namespace Pupa.Services
         private static List<string> Validate(JsonNode? schema, JsonObject values)
         {
             var errors = new List<string>();
-            foreach (var field in FieldsOf(schema))
+            foreach (var field in FieldsOf(schema, values))
             {
                 var key = field["key"]?.GetValue<string>();
                 if (string.IsNullOrEmpty(key)) continue;
@@ -491,7 +503,7 @@ namespace Pupa.Services
 
         private static bool AllRequiredFilled(JsonNode? schema, JsonObject values)
         {
-            foreach (var field in FieldsOf(schema))
+            foreach (var field in FieldsOf(schema, values))
             {
                 var key = field["key"]?.GetValue<string>();
                 if (string.IsNullOrEmpty(key)) continue;
