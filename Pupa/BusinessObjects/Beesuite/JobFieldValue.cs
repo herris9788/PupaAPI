@@ -79,6 +79,7 @@ namespace Pupa.BusinessObjects.Beesuite
         }
 
         private string? _valueJson;
+        [Column(TypeName = "jsonb")]
         public virtual string? ValueJson
         {
             get => _valueJson;
