@@ -85,6 +85,25 @@ namespace Pupa.Configs
             try
             {
                 _db.Set<TEntity>().Add(value);
+
+                if (value is InventoryUser newVessel &&
+                    (newVessel.InventoryUserID == null || newVessel.InventoryUserID == 0) &&
+                    !string.IsNullOrWhiteSpace(newVessel.DB))
+                {
+                    // InventoryUserID is NOT NULL and UNIQUE per DB in Postgres
+                    // (Ascend.IC_InventoryUsers, constraint Unique_DB_InventoryUserID),
+                    // but Vessel Management's "Add Vessel" dialog has no safe way to
+                    // compute the next value itself (a client-side guess could race a
+                    // concurrent Add) — leaving it unset previously sent an explicit
+                    // NULL and violated the NOT NULL constraint ("An error occurred
+                    // while saving the entity changes"). Assign the next value for
+                    // this DB here instead.
+                    var maxId = await _db.InventoryUser
+                        .Where(x => x.DB == newVessel.DB)
+                        .MaxAsync(x => (int?)x.InventoryUserID) ?? 0;
+                    newVessel.InventoryUserID = maxId + 1;
+                }
+
                 await _db.SaveChangesAsync();
 
                 if (value is UserApprovalScope2 v2Created && v2Created.VesselID != null)
