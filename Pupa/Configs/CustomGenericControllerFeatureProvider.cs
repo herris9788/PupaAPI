@@ -79,6 +79,7 @@ namespace Pupa.Configs
             typeof(CacheControl),
             typeof(CartItem),
             typeof(CartItemAttachment),
+            typeof(JobRequestCartItem),
             typeof(QuickOrderItem),
             typeof(ItemEquivalent),
             typeof(ApprovalGroup),
