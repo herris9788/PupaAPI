@@ -390,5 +390,18 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _WA;
             set { if (_WA == value) return; OnPropertyChanging(); _WA = value; OnPropertyChanged(); }
         }
+
+        // Global, per-user flag (not per-vessel): when true, this user can see
+        // ALL documents on vessels already assigned to them via UserVesselRel
+        // in Track Item, even if they aren't in that vessel's approval matrix
+        // (UserApprovalScope/UserApprovalScope2). Read-only visibility only —
+        // never grants approve/edit rights and never expands which vessels are
+        // visible. Settable only by SYSADMIN (see CustomDataController.Patch).
+        private bool? _CanViewAllVesselDocuments { get; set; } = false;
+        public virtual bool? CanViewAllVesselDocuments
+        {
+            get => _CanViewAllVesselDocuments;
+            set { if (_CanViewAllVesselDocuments == value) return; OnPropertyChanging(); _CanViewAllVesselDocuments = value; OnPropertyChanged(); }
+        }
     }
 }

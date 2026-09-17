@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Security.Claims;
 
 namespace Pupa.Configs
 {
@@ -132,6 +133,25 @@ namespace Pupa.Configs
             {
                 return NotFound();
             }
+
+            // CanViewAllVesselDocuments is a global visibility override (see
+            // its doc-comment on Pupa.BusinessObjects.Beesuite.User) that only
+            // a SYSADMIN may grant — SYSADMIN2 can edit every other field on
+            // this dialog (Role/Position/Phone/etc.) but must never see or
+            // change this one. There's no per-field whitelist elsewhere in
+            // this generic controller, so the check has to live here.
+            if (entity is Pupa.BusinessObjects.Beesuite.User &&
+                patch.EnumerateObject().Any(p => string.Equals(
+                    p.Name, nameof(Pupa.BusinessObjects.Beesuite.User.CanViewAllVesselDocuments),
+                    StringComparison.OrdinalIgnoreCase)))
+            {
+                var callerRole = HttpContext.User?.FindFirst(ClaimTypes.Role)?.Value;
+                if (!string.Equals(callerRole, "SYSADMIN", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Forbid();
+                }
+            }
+
             try
             {
                 // Captured BEFORE the patch so a PATCH that moves a
