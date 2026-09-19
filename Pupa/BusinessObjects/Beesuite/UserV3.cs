@@ -159,6 +159,39 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+        // ── Web login migration (Ascend → UserV3) ────────────────────────────
+        // Migrated = akun ini sudah pindah ke UserV3 sebagai sumber login. Saat
+        // false, login web masih diverifikasi ke Ascend (lama); saat true,
+        // password diverifikasi ke UserV3.Secret dan profil (DBNames/Roles/Buyer/
+        // Dept/FullName) dibaca dari ProfileJson — tidak menyentuh Ascend lagi.
+        private bool? _Migrated { get; set; }
+        [Column("Migrated")]
+        public virtual bool? Migrated
+        {
+            get => _Migrated;
+            set
+            {
+                if (_Migrated == value) return;
+                OnPropertyChanging();
+                _Migrated = value;
+                OnPropertyChanged();
+            }
+        }
+        // Snapshot JSON profil Ascend saat migrasi: { Fullname, DBNames, Roles, Buyer, Dept }.
+        private string? _ProfileJson { get; set; }
+        [Column("ProfileJson")]
+        public virtual string? ProfileJson
+        {
+            get => _ProfileJson;
+            set
+            {
+                if (_ProfileJson == value) return;
+                OnPropertyChanging();
+                _ProfileJson = value;
+                OnPropertyChanged();
+            }
+        }
+
         public virtual ObservableCollection<UserVesselRel>? UserVesselRels { get; set; }
         private bool? _IsActive { get; set; }
         public virtual bool? IsActive
@@ -233,5 +266,21 @@ namespace Pupa.BusinessObjects.Beesuite
             }
         }
         public virtual ObservableCollection<UserApprovalScope>? UserApprovalScopes { get; set; }
+
+        // Employee/national ID — collected once, right after a user's first
+        // successful login via UserV3 (auth/v4/login), and usable as an
+        // alternate login key alongside Username from then on.
+        private string? _NIK { get; set; }
+        public virtual string? NIK
+        {
+            get => _NIK;
+            set
+            {
+                if (_NIK == value) return;
+                OnPropertyChanging();
+                _NIK = value;
+                OnPropertyChanged();
+            }
+        }
     }
 }

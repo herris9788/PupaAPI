@@ -180,5 +180,19 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _BottomNavHideDepths;
             set { OnPropertyChanging(); _BottomNavHideDepths = value; OnPropertyChanged(); }
         }
+
+        // Extra HTTP request headers the client should send when loading this
+        // menu's Route as a WebView URL, stored as a raw JSON object string
+        // e.g. {"X-API-TOKEN":"{{accessToken}}","X-Tenant":"waruna"}.
+        // "{{accessToken}}" is a placeholder the mobile client resolves to
+        // the user's locally-stored session token at request time — the
+        // literal token is never saved in this column.
+        private string? _Headers { get; set; }
+        [Column("Headers")]
+        public virtual string? Headers
+        {
+            get => _Headers;
+            set { OnPropertyChanging(); _Headers = value; OnPropertyChanged(); }
+        }
     }
 }

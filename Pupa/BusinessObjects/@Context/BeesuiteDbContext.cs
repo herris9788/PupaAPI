@@ -85,6 +85,11 @@ namespace Pupa.BusinessObjects
         public DbSet<WhatsappDeviceGroup> WhatsappDeviceGroup { get; set; }
         public DbSet<LaunchPoint> LaunchPoint { get; set; }
         public DbSet<Menu> Menu { get; set; }
+        public DbSet<CustomerCompany> CustomerCompany { get; set; }
+        public DbSet<CustomerLicense> CustomerLicense { get; set; }
+        public DbSet<LunchMenu> LunchMenu { get; set; }
+        public DbSet<LunchMenuItem> LunchMenuItem { get; set; }
+        public DbSet<LunchReservation> LunchReservation { get; set; }
         public DbSet<LaunchPointTemplate> LaunchPointTemplate { get; set; }
         public DbSet<UserPermission> UserPermission { get; set; }
         public DbSet<OrgDelegation> OrgDelegation { get; set; }
