@@ -20,6 +20,7 @@ namespace Pupa.Configs
             typeof(Requisition),
             typeof(RequisitionDetail),
             typeof(VesselSpecRel),
+            typeof(VesselDetail),
             typeof(StockCategory),
             typeof(StockFamily),
             typeof(StockFamilyCOA),

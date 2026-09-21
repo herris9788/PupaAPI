@@ -53,6 +53,7 @@ namespace Pupa.BusinessObjects
         public DbSet<RequisitionFormConfig> RequisitionFormConfig { get; set; }
         public DbSet<RequisitionFormData> RequisitionFormData { get; set; }
         public DbSet<VesselSpecRel> VesselSpecRel { get; set; }
+        public DbSet<VesselDetail> VesselDetail { get; set; }
         public DbSet<StockCategory> StockCategory { get; set; }
         public DbSet<StockFamily> StockFamily { get; set; }
         public DbSet<StockFamilyCOA> StockFamilyCOA { get; set; }
