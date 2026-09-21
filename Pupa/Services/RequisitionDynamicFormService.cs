@@ -443,7 +443,7 @@ namespace Pupa.Services
         /// yang cuma tampil kalau Purpose = Audit Findings) akan tetap dianggap
         /// wajib untuk kondisi lain (mis. Purpose = New Cargo) dan submit gagal
         /// 400 padahal user tidak pernah melihat field itu.
-        private static IEnumerable<JsonObject> FieldsOf(JsonNode? schema, JsonObject values)
+        private static IEnumerable<(string? StepKey, JsonObject Field)> FieldsOf(JsonNode? schema, JsonObject values)
         {
             if (schema is not JsonObject obj) yield break;
             if (obj["steps"] is JsonArray steps)
@@ -452,17 +452,25 @@ namespace Pupa.Services
                 {
                     if (step["visibleWhen"]?.GetValue<string>() is string vw && !EvalCondition(vw, values))
                         continue;
+                    var stepKey = step["key"]?.GetValue<string>();
                     if (step["fields"] is JsonArray fields)
                         foreach (var f in fields.OfType<JsonObject>())
-                            yield return f;
+                            yield return (stepKey, f);
                 }
             }
             else if (obj["fields"] is JsonArray flat)
             {
                 foreach (var f in flat.OfType<JsonObject>())
-                    yield return f;
+                    yield return (null, f);
             }
         }
+
+        // Key di [values] mengikuti konvensi FE: "{step.key}.{field.key}" kalau field
+        // ada dalam step, atau field.key saja untuk schema flat tanpa step.
+        private static string? CompositeKey(string? stepKey, string? fieldKey)
+            => string.IsNullOrEmpty(fieldKey)
+                ? null
+                : string.IsNullOrEmpty(stepKey) ? fieldKey : $"{stepKey}.{fieldKey}";
 
         private static bool IsBlank(JsonNode? v)
             => v == null
@@ -472,9 +480,9 @@ namespace Pupa.Services
         private static List<string> Validate(JsonNode? schema, JsonObject values)
         {
             var errors = new List<string>();
-            foreach (var field in FieldsOf(schema, values))
+            foreach (var (stepKey, field) in FieldsOf(schema, values))
             {
-                var key = field["key"]?.GetValue<string>();
+                var key = CompositeKey(stepKey, field["key"]?.GetValue<string>());
                 if (string.IsNullOrEmpty(key)) continue;
                 var label = field["label"]?.GetValue<string>() ?? key;
 
@@ -503,9 +511,9 @@ namespace Pupa.Services
 
         private static bool AllRequiredFilled(JsonNode? schema, JsonObject values)
         {
-            foreach (var field in FieldsOf(schema, values))
+            foreach (var (stepKey, field) in FieldsOf(schema, values))
             {
-                var key = field["key"]?.GetValue<string>();
+                var key = CompositeKey(stepKey, field["key"]?.GetValue<string>());
                 if (string.IsNullOrEmpty(key)) continue;
                 bool required = field["required"]?.GetValue<bool?>() == true;
                 if (!required && field["requiredWhen"]?.GetValue<string>() is string rw)
@@ -517,7 +525,8 @@ namespace Pupa.Services
         }
 
         // Evaluator ekspresi minimal: "a.b == 'x' && c > 3 || d != false"
-        //  - operand: fieldKey atau step.fieldKey (prefix step diabaikan)
+        //  - operand: fieldKey atau step.fieldKey, dipakai utuh sebagai key ke
+        //    [values] (mengikuti konvensi composite key FE, lihat CompositeKey)
         //  - operator: == != < <= > >=
         //  - literal: 'str', angka, true/false
         //  - gabung: && (semua) / || (salah satu). Presedensi: || memisah grup &&.
@@ -586,8 +595,7 @@ namespace Pupa.Services
             if (raw is "true" or "false") return bool.Parse(raw);
             if (double.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out var n)) return n;
 
-            var key = raw.Contains('.') ? raw[(raw.LastIndexOf('.') + 1)..] : raw;
-            if (values.TryGetPropertyValue(key, out var node) && node is JsonValue jv)
+            if (values.TryGetPropertyValue(raw, out var node) && node is JsonValue jv)
             {
                 if (jv.TryGetValue<bool>(out var b)) return b;
                 if (jv.TryGetValue<double>(out var d)) return d;
