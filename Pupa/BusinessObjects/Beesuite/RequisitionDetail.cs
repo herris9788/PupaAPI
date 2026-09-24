@@ -582,8 +582,8 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
-        private int? _ROB { get; set; }
-        public virtual int? ROB
+        private decimal? _ROB { get; set; }
+        public virtual decimal? ROB
         {
             get => _ROB;
             set
