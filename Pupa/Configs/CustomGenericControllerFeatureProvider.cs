@@ -82,6 +82,7 @@ namespace Pupa.Configs
             typeof(CartItemAttachment),
             typeof(JobRequestCartItem),
             typeof(QuickOrderItem),
+            typeof(CustomPage),
             typeof(ItemEquivalent),
             typeof(ApprovalGroup),
             typeof(ItemGroupMapping),

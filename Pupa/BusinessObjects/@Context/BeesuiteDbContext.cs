@@ -112,6 +112,7 @@ namespace Pupa.BusinessObjects
         public DbSet<CartItem> CartItem { get; set; }
         public DbSet<CartItemAttachment> CartItemAttachment { get; set; }
         public DbSet<QuickOrderItem> QuickOrderItem { get; set; }
+        public DbSet<CustomPage> CustomPage { get; set; }
         public DbSet<JobRequestCartItem> JobRequestCartItem { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
