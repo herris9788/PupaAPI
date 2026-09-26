@@ -160,6 +160,7 @@ namespace Pupa
 
             services.AddScoped<IFtpService, FtpService>();
             services.AddScoped<Pupa.Services.RequisitionDynamicFormService>();
+            services.AddSingleton<Pupa.Services.DatabaseRestoreService>();
 
             services.AddStackExchangeRedisCache(options =>
             {
