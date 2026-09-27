@@ -110,6 +110,17 @@ namespace Pupa.BusinessObjects.Beesuite
             set { OnPropertyChanging(); _AllowWeb = value; OnPropertyChanged(); }
         }
 
+        // Pemisah menu antar project yang berbagi tabel Menu: WEB = website BeeSuite (Nuxt), BEESUITE_APP = app BeeSuite (Flutter, kode BS_*),
+        // NETSUITE = project NetSuite (kode NS_*). Halaman Settings > Launchpoint hanya menawarkan menu WEB.
+        private string? _Project { get; set; }
+        [Column("Project")]
+        [MaxLength(50)]
+        public virtual string? Project
+        {
+            get => _Project;
+            set { OnPropertyChanging(); _Project = value; OnPropertyChanged(); }
+        }
+
         private bool _AllowMobile { get; set; } = false;
         [Column("AllowMobile")]
         public virtual bool AllowMobile
