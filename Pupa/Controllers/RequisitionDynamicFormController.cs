@@ -34,6 +34,73 @@ namespace Pupa.Controllers
             !string.IsNullOrWhiteSpace(User?.Identity?.Name) ? User!.Identity!.Name
             : (string.IsNullOrWhiteSpace(fromBody) ? null : fromBody);
 
+        // ─────────────────────── AUDIT TRAIL (template) ──────────────────────
+
+        private static string? Snapshot(object? o) => o == null ? null : JsonSerializer.Serialize(o);
+
+        /// <summary>Tulis 1 baris audit. TIDAK memanggil SaveChanges — caller
+        /// yang commit (biasanya SaveChangesAsync yang sudah dipanggil di
+        /// endpoint yang sama untuk perubahan Template itu sendiri).</summary>
+        private void LogTemplateAudit(RequisitionFormTemplate t, string action, object? oldValue, object? newValue, string? remarks = null)
+        {
+            _db.RequisitionFormTemplateAudit.Add(new RequisitionFormTemplateAudit
+            {
+                TemplateID = t.ID,
+                Code = t.Code,
+                Version = t.Version,
+                Action = action,
+                OldValue = Snapshot(oldValue),
+                NewValue = Snapshot(newValue),
+                Remarks = remarks,
+                CreatedBy = Actor(null),
+                CreatedAt = DateTime.Now,
+            });
+        }
+
+        /// <summary>Histori lengkap 1 keluarga template (semua Version dengan Code
+        /// yang sama), terbaru dulu — dipakai UI buat menampilkan audit trail
+        /// (Create/Update/Publish/Unpublish/Activate/Deactivate/NewVersion/Delete).</summary>
+        [HttpGet("template/{id:int}/audit")]
+        public async Task<IActionResult> GetTemplateAuditById(int id)
+        {
+            var t = await _db.RequisitionFormTemplate.AsNoTracking().FirstOrDefaultAsync(x => x.ID == id);
+            var code = t?.Code;
+            if (code == null)
+            {
+                // Template sudah dihapus — cari code-nya dari histori sendiri.
+                code = await _db.RequisitionFormTemplateAudit.AsNoTracking()
+                    .Where(a => a.TemplateID == id).Select(a => a.Code).FirstOrDefaultAsync();
+                if (code == null) return NotFound();
+            }
+            return await GetTemplateAuditByCode(code);
+        }
+
+        [HttpGet("template/audit")]
+        public async Task<IActionResult> GetTemplateAuditByCode([FromQuery] string code)
+        {
+            if (string.IsNullOrWhiteSpace(code)) return BadRequest("code wajib.");
+            var raw = await _db.RequisitionFormTemplateAudit.AsNoTracking()
+                .Where(a => a.Code == code)
+                .OrderByDescending(a => a.CreatedAt).ThenByDescending(a => a.ID)
+                .ToListAsync();
+            // oldValue/newValue diparse jadi object JSON asli (bukan string
+            // ter-escape) supaya konsisten dengan endpoint lain (effective-schema/data).
+            var rows = raw.Select(a => new
+            {
+                a.ID,
+                templateId = a.TemplateID,
+                a.Code,
+                a.Version,
+                a.Action,
+                oldValue = ParseOrNull(a.OldValue),
+                newValue = ParseOrNull(a.NewValue),
+                a.Remarks,
+                a.CreatedBy,
+                a.CreatedAt,
+            });
+            return Ok(rows);
+        }
+
         // ─────────────────────────── TEMPLATE ───────────────────────────────
 
         [HttpGet("template")]
@@ -83,6 +150,9 @@ namespace Pupa.Controllers
             body.CreatedAt = body.UpdatedAt = DateTime.Now;
             _db.RequisitionFormTemplate.Add(body);
             await _db.SaveChangesAsync();
+            LogTemplateAudit(body, "Create", null,
+                new { body.Code, body.Name, body.Version, body.IsActive, body.IsPublished, body.SchemaJson });
+            await _db.SaveChangesAsync();
             return CreatedAtAction(nameof(GetTemplate), new { id = body.ID }, body);
         }
 
@@ -96,10 +166,13 @@ namespace Pupa.Controllers
             if (body.SchemaJson != null && !IsValidJson(body.SchemaJson))
                 return BadRequest("SchemaJson bukan JSON valid.");
 
+            var oldSnapshot = new { t.Name, t.SchemaJson, t.IsActive };
             t.Name = body.Name ?? t.Name;
             if (body.SchemaJson != null) t.SchemaJson = body.SchemaJson;
             t.IsActive = body.IsActive;
             t.UpdatedAt = DateTime.Now;
+            await _db.SaveChangesAsync();
+            LogTemplateAudit(t, "Update", oldSnapshot, new { t.Name, t.SchemaJson, t.IsActive });
             await _db.SaveChangesAsync();
             return Ok(t);
         }
@@ -109,9 +182,15 @@ namespace Pupa.Controllers
         {
             var t = await _db.RequisitionFormTemplate.FirstOrDefaultAsync(x => x.ID == id);
             if (t == null) return NotFound();
+            var wasPublished = t.IsPublished;
             t.IsPublished = true;
             t.UpdatedAt = DateTime.Now;
             await _db.SaveChangesAsync();
+            if (!wasPublished)
+            {
+                LogTemplateAudit(t, "Publish", new { IsPublished = false }, new { IsPublished = true });
+                await _db.SaveChangesAsync();
+            }
             return Ok(t);
         }
 
@@ -132,6 +211,8 @@ namespace Pupa.Controllers
             t.IsPublished = false;
             t.UpdatedAt = DateTime.Now;
             await _db.SaveChangesAsync();
+            LogTemplateAudit(t, "Unpublish", new { IsPublished = true }, new { IsPublished = false });
+            await _db.SaveChangesAsync();
             return Ok(t);
         }
 
@@ -146,9 +227,17 @@ namespace Pupa.Controllers
             if (body.ValueKind != JsonValueKind.Object || !body.TryGetProperty("isActive", out var v)
                 || (v.ValueKind != JsonValueKind.True && v.ValueKind != JsonValueKind.False))
                 return BadRequest("Body harus { \"isActive\": true|false }.");
-            t.IsActive = v.GetBoolean();
+            var newActive = v.GetBoolean();
+            var wasActive = t.IsActive;
+            t.IsActive = newActive;
             t.UpdatedAt = DateTime.Now;
             await _db.SaveChangesAsync();
+            if (wasActive != newActive)
+            {
+                LogTemplateAudit(t, newActive ? "Activate" : "Deactivate",
+                    new { IsActive = wasActive }, new { IsActive = newActive });
+                await _db.SaveChangesAsync();
+            }
             return Ok(t);
         }
 
@@ -182,6 +271,11 @@ namespace Pupa.Controllers
             };
             _db.RequisitionFormTemplate.Add(copy);
             await _db.SaveChangesAsync();
+            LogTemplateAudit(copy, "NewVersion",
+                new { SourceTemplateID = src.ID, SourceVersion = src.Version },
+                new { copy.Version, copy.SchemaJson },
+                remarks: $"Revisi dari v{src.Version} (ID {src.ID}).");
+            await _db.SaveChangesAsync();
             return CreatedAtAction(nameof(GetTemplate), new { id = copy.ID }, copy);
         }
 
@@ -212,6 +306,19 @@ namespace Pupa.Controllers
                 });
 
             await using var tx = await _db.Database.BeginTransactionAsync();
+
+            // Catat audit "Delete" & SIMPAN DULU selagi template masih ada (FK
+            // masih valid) — baru setelah itu hapus template-nya. Urutan ini
+            // penting: saat Remove(t) di-SaveChanges, ON DELETE SET NULL akan
+            // menjalar ke baris audit ini (dan seluruh histori Create/Update/
+            // Publish/... template ini) sehingga TemplateID jadi NULL tapi
+            // baris audit itu sendiri TETAP ADA (Code/Version didenormalisasi).
+            LogTemplateAudit(t, "Delete",
+                new { t.Code, t.Version, t.Name, t.IsActive, t.IsPublished },
+                null,
+                remarks: configs.Count > 0 ? $"Ikut menghapus {configs.Count} config." : null);
+            await _db.SaveChangesAsync();
+
             if (configs.Count > 0) _db.RequisitionFormConfig.RemoveRange(configs);
             // RequisitionFormData.TemplateID -> FK ON DELETE SET NULL (pointer
             // histori saja; SchemaSnapshot per baris tetap utuh).
@@ -381,6 +488,12 @@ namespace Pupa.Controllers
         {
             if (string.IsNullOrWhiteSpace(s)) return false;
             try { JsonNode.Parse(s); return true; } catch { return false; }
+        }
+
+        private static JsonNode? ParseOrNull(string? s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return null;
+            try { return JsonNode.Parse(s); } catch { return null; }
         }
     }
 }

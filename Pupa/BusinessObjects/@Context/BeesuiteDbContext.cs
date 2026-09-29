@@ -52,6 +52,7 @@ namespace Pupa.BusinessObjects
         public DbSet<RequisitionFormTemplate> RequisitionFormTemplate { get; set; }
         public DbSet<RequisitionFormConfig> RequisitionFormConfig { get; set; }
         public DbSet<RequisitionFormData> RequisitionFormData { get; set; }
+        public DbSet<RequisitionFormTemplateAudit> RequisitionFormTemplateAudit { get; set; }
         public DbSet<VesselSpecRel> VesselSpecRel { get; set; }
         public DbSet<VesselDetail> VesselDetail { get; set; }
         public DbSet<StockCategory> StockCategory { get; set; }
@@ -329,6 +330,17 @@ namespace Pupa.BusinessObjects
                 .HasIndex(d => d.RequisitionDetailID)
                 .HasFilter("\"RequisitionDetailID\" IS NOT NULL")
                 .IsUnique();
+
+            // Audit trail template: TemplateID SetNull (bukan Cascade) — baris
+            // "Delete" harus tetap ada walau template draft-nya sudah dihapus;
+            // Code/Version di RequisitionFormTemplateAudit didenormalisasi.
+            modelBuilder.Entity<RequisitionFormTemplateAudit>()
+                .HasOne(a => a.Template)
+                .WithMany()
+                .HasForeignKey(a => a.TemplateID)
+                .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<RequisitionFormTemplateAudit>()
+                .HasIndex(a => new { a.Code, a.CreatedAt });
         }
 
         public override int SaveChanges(bool acceptAllChangesOnSuccess)
