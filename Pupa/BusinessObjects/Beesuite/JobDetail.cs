@@ -148,6 +148,20 @@ namespace Pupa.BusinessObjects.Beesuite
             set { if (_Remarks == value) return; OnPropertyChanging(); _Remarks = value; OnPropertyChanged(); }
         }
 
+        // Raw form answers (JSON) the client's category-specific form
+        // produced before flattening everything into Remarks — additive,
+        // read/edited by the Review & Approve page so an approver can re-open
+        // the same structured form instead of only a Remarks text blob.
+        // NULL for every JobDetail predating this column, and for any
+        // category that hasn't wired this up yet (Calibration only so far).
+        private string? _FormDataJson { get; set; }
+        [Column("FormDataJson", TypeName = "jsonb")]
+        public virtual string? FormDataJson
+        {
+            get => _FormDataJson;
+            set { if (_FormDataJson == value) return; OnPropertyChanging(); _FormDataJson = value; OnPropertyChanged(); }
+        }
+
         // ── Per-item approval quantities (mirrors RequisitionDetail) ──────────────
         // Job Request approval works like Item Request: the requested quantity is the
         // baseline, and each approver on the document-level chain may adjust the
