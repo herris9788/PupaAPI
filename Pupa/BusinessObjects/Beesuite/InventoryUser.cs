@@ -289,6 +289,16 @@ namespace Pupa.BusinessObjects.Beesuite
             set { OnPropertyChanging(); _Fleet = value; OnPropertyChanged(); }
         }
 
+        /// <summary>Tanggal Running Store terakhir untuk vessel ini. Kolom lokal Postgres
+        /// (tidak disinkron dari SQL Server), lihat Migrations/migration_InventoryUserRunningStoreDate.sql.</summary>
+        private DateTime? _RunningStoreDate { get; set; }
+        [Column("RunningStoreDate")]
+        public virtual DateTime? RunningStoreDate
+        {
+            get => _RunningStoreDate;
+            set { OnPropertyChanging(); _RunningStoreDate = value; OnPropertyChanged(); }
+        }
+
         #endregion
         public virtual ObservableCollection<UserVesselRel>? UserVesselRels { get; set; }
         public virtual ObservableCollection<Requisition>? Requisitions { get; set; }
