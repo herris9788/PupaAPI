@@ -161,21 +161,7 @@ namespace Pupa.Configs
                 int? preVesselId = (entity as UserApprovalScope2)?.VesselID;
                 short? preLevel = (entity as UserApprovalScope2)?.Level;
 
-                var changedPropertyNames = ApplyPatch(entity, patch);
-
-                var patchUpdatesRevertStatus = changedPropertyNames
-                    .Any(propertyName => string.Equals(
-                        propertyName,
-                        nameof(Requisition.RevertStatus),
-                        StringComparison.OrdinalIgnoreCase));
-
-                if (entity is Requisition requisition &&
-                    requisition.RevertStatus != null &&
-                    !patchUpdatesRevertStatus)
-                {
-                    requisition.RevertStatus = null;
-                }
-
+                ApplyPatch(entity, patch);
                 await _db.SaveChangesAsync();
 
                 if (entity is UserApprovalScope2 v2Patched)
