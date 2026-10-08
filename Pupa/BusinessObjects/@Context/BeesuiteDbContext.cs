@@ -105,6 +105,7 @@ namespace Pupa.BusinessObjects
         public DbSet<ErrorLog> ErrorLog { get; set; }
         public DbSet<AccessLog> AccessLog { get; set; }
         public DbSet<AppConfig> AppConfig { get; set; }
+        public DbSet<LSAItem> LSAItem { get; set; }
         public DbSet<JobRequestAttachment> JobRequestAttachment { get; set; }
         public DbSet<JobAttachment> JobAttachment { get; set; }
         public DbSet<Usage> Usage { get; set; }
@@ -152,6 +153,7 @@ namespace Pupa.BusinessObjects
                 .Ignore(u => u.UserApprovalScopes)
                 .Ignore(u => u.UserVesselRels);
 
+            modelBuilder.Entity<LSAItem>().HasKey(x => new { x.ItemID, x.SupplierID });
             modelBuilder.Entity<InventoryUser>().HasKey(iu => iu.ID);
             modelBuilder.Entity<InventoryUserGroup>().HasKey(iug => iug.ID);
             modelBuilder.Entity<InventoryUser>()
