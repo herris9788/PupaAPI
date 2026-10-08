@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Pupa.BusinessObjects.Beesuite
@@ -15,7 +16,10 @@ namespace Pupa.BusinessObjects.Beesuite
         private int _SupplierID;
         private string? _SupplierName;
 
-        [Column("ItemID")]
+        // [Key] wajib: ODataConventionModelBuilder tidak membaca HasKey() dari EF, tanpa ini
+        // OData melempar EntitySetTypeHasNoKeys saat startup. Key gabungan (ItemID, SupplierID).
+        [Key]
+        [Column("ItemID", Order = 0)]
         public virtual int ItemID
         {
             get { return _ItemID; }
@@ -36,7 +40,8 @@ namespace Pupa.BusinessObjects.Beesuite
             set { OnPropertyChanging(); _Type = value; OnPropertyChanged(); }
         }
 
-        [Column("SupplierID")]
+        [Key]
+        [Column("SupplierID", Order = 1)]
         public virtual int SupplierID
         {
             get { return _SupplierID; }

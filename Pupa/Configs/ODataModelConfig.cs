@@ -65,6 +65,10 @@ namespace Pupa.Configs
             var iug = builder.AddEntityType(typeof(InventoryUserGroup));
             builder.AddEntitySet(nameof(InventoryUserGroup), iug);
 
+            // LSAItem (key gabungan ItemID+SupplierID) dilayani LSAItemController sendiri.
+            var lsa = builder.AddEntityType(typeof(LSAItem));
+            builder.AddEntitySet(nameof(LSAItem), lsa);
+
             return builder.GetEdmModel();
         }
     }
