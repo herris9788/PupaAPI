@@ -5,25 +5,24 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace Pupa.BusinessObjects.Beesuite
 {
     /// <summary>Item + supplier mapping untuk LSA. Tabel lokal Postgres (public."LSAItem"), lihat
-    /// Migrations/migration_LSAItem.sql. Tabel tidak punya primary key, jadi key gabungan
-    /// (ItemID, SupplierID) hanya didefinisikan di level model EF (BeesuiteDbContext).</summary>
+    /// Migrations/migration_LSAItem_v2.sql. Primary key: ID (identity). Item hanya disimpan lewat ItemCode,
+    /// supplier lewat SupplierCode + SupplierName.</summary>
     [Table("LSAItem", Schema = "public")]
     public class LSAItem : BaseEntity
     {
-        private int _ItemID;
+        private int _ID;
         private string? _ItemCode;
         private string? _Type;
-        private int _SupplierID;
+        private string? _SupplierCode;
         private string? _SupplierName;
 
-        // [Key] wajib: ODataConventionModelBuilder tidak membaca HasKey() dari EF, tanpa ini
-        // OData melempar EntitySetTypeHasNoKeys saat startup. Key gabungan (ItemID, SupplierID).
         [Key]
-        [Column("ItemID", Order = 0)]
-        public virtual int ItemID
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        [Column("ID")]
+        public virtual int ID
         {
-            get { return _ItemID; }
-            set { OnPropertyChanging(); _ItemID = value; OnPropertyChanged(); }
+            get { return _ID; }
+            set { OnPropertyChanging(); _ID = value; OnPropertyChanged(); }
         }
 
         [Column("ItemCode")]
@@ -40,12 +39,11 @@ namespace Pupa.BusinessObjects.Beesuite
             set { OnPropertyChanging(); _Type = value; OnPropertyChanged(); }
         }
 
-        [Key]
-        [Column("SupplierID", Order = 1)]
-        public virtual int SupplierID
+        [Column("SupplierCode")]
+        public virtual string? SupplierCode
         {
-            get { return _SupplierID; }
-            set { OnPropertyChanging(); _SupplierID = value; OnPropertyChanged(); }
+            get { return _SupplierCode; }
+            set { OnPropertyChanging(); _SupplierCode = value; OnPropertyChanged(); }
         }
 
         [Column("SupplierName")]

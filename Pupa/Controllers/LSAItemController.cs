@@ -11,9 +11,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Pupa.Controllers
 {
     /// <summary>
-    /// LSAItem punya key gabungan (ItemID, SupplierID), sedangkan CustomDataController&lt;T&gt; hanya
-    /// mengenal key tunggal -- jadi entity ini punya controller sendiri (seperti InventoryUserGroup).
-    /// Akses per key: /LSAItem(ItemID=1,SupplierID=2)
+    /// LSAItem dilayani controller sendiri (seperti InventoryUserGroup).
+    /// Akses per key: /LSAItem(1)
     /// </summary>
     public class LSAItemController : ODataController
     {
@@ -31,9 +30,9 @@ namespace Pupa.Controllers
         }
 
         [EnableQuery]
-        public IActionResult Get([FromODataUri] int keyItemID, [FromODataUri] int keySupplierID)
+        public IActionResult Get([FromODataUri] int key)
         {
-            return Ok(SingleResult.Create(_db.LSAItem.Where(x => x.ItemID == keyItemID && x.SupplierID == keySupplierID)));
+            return Ok(SingleResult.Create(_db.LSAItem.Where(x => x.ID == key)));
         }
 
         public async Task<IActionResult> Post([FromBody] LSAItem value)
@@ -44,19 +43,19 @@ namespace Pupa.Controllers
             return Created(value);
         }
 
-        public async Task<IActionResult> Patch([FromODataUri] int keyItemID, [FromODataUri] int keySupplierID, [FromBody] Delta<LSAItem> delta)
+        public async Task<IActionResult> Patch([FromODataUri] int key, [FromBody] Delta<LSAItem> delta)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
-            var obj = await _db.LSAItem.FirstOrDefaultAsync(x => x.ItemID == keyItemID && x.SupplierID == keySupplierID);
+            var obj = await _db.LSAItem.FirstOrDefaultAsync(x => x.ID == key);
             if (obj == null) return NotFound();
             delta.Patch(obj);
             await _db.SaveChangesAsync();
             return Updated(obj);
         }
 
-        public async Task<IActionResult> Delete([FromODataUri] int keyItemID, [FromODataUri] int keySupplierID)
+        public async Task<IActionResult> Delete([FromODataUri] int key)
         {
-            var obj = await _db.LSAItem.FirstOrDefaultAsync(x => x.ItemID == keyItemID && x.SupplierID == keySupplierID);
+            var obj = await _db.LSAItem.FirstOrDefaultAsync(x => x.ID == key);
             if (obj == null) return NotFound();
             _db.LSAItem.Remove(obj);
             await _db.SaveChangesAsync();

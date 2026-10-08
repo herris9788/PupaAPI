@@ -153,7 +153,7 @@ namespace Pupa.BusinessObjects
                 .Ignore(u => u.UserApprovalScopes)
                 .Ignore(u => u.UserVesselRels);
 
-            modelBuilder.Entity<LSAItem>().HasKey(x => new { x.ItemID, x.SupplierID });
+            modelBuilder.Entity<LSAItem>().HasKey(x => x.ID);
             modelBuilder.Entity<InventoryUser>().HasKey(iu => iu.ID);
             modelBuilder.Entity<InventoryUserGroup>().HasKey(iug => iug.ID);
             modelBuilder.Entity<InventoryUser>()
