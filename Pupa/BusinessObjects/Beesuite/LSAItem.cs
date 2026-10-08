@@ -15,6 +15,8 @@ namespace Pupa.BusinessObjects.Beesuite
         private string? _Type;
         private string? _SupplierCode;
         private string? _SupplierName;
+        private string? _ItemVendor;
+        private string? _OldItemCode;
 
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -51,6 +53,22 @@ namespace Pupa.BusinessObjects.Beesuite
         {
             get { return _SupplierName; }
             set { OnPropertyChanging(); _SupplierName = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Khusus tipe Single: nama item menurut vendor (input bebas).</summary>
+        [Column("ItemVendor")]
+        public virtual string? ItemVendor
+        {
+            get { return _ItemVendor; }
+            set { OnPropertyChanging(); _ItemVendor = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Kode item lama (input bebas), untuk pemetaan 1:1.</summary>
+        [Column("OldItemCode")]
+        public virtual string? OldItemCode
+        {
+            get { return _OldItemCode; }
+            set { OnPropertyChanging(); _OldItemCode = value; OnPropertyChanged(); }
         }
     }
 }
