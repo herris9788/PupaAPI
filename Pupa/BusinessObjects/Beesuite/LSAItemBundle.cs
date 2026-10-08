@@ -11,7 +11,7 @@ namespace Pupa.BusinessObjects.Beesuite
     {
         private int _ID;
         private int? _LSAItemID;
-        private string? _ItemCode;
+        private string? _ItemName;
         private decimal? _Qty;
 
         [Key]
@@ -30,11 +30,11 @@ namespace Pupa.BusinessObjects.Beesuite
             set { OnPropertyChanging(); _LSAItemID = value; OnPropertyChanged(); }
         }
 
-        [Column("ItemCode")]
-        public virtual string? ItemCode
+        [Column("ItemName")]
+        public virtual string? ItemName
         {
-            get { return _ItemCode; }
-            set { OnPropertyChanging(); _ItemCode = value; OnPropertyChanged(); }
+            get { return _ItemName; }
+            set { OnPropertyChanging(); _ItemName = value; OnPropertyChanged(); }
         }
 
         [Column("Qty")]

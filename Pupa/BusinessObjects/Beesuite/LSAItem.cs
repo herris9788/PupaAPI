@@ -5,13 +5,13 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace Pupa.BusinessObjects.Beesuite
 {
     /// <summary>Item + supplier mapping untuk LSA. Tabel lokal Postgres (public."LSAItem"), lihat
-    /// Migrations/migration_LSAItem_v2.sql. Primary key: ID (identity). Item hanya disimpan lewat ItemCode,
+    /// Migrations/migration_LSAItem_v2.sql. Primary key: ID (identity). Item hanya disimpan lewat ItemName,
     /// supplier lewat SupplierCode + SupplierName.</summary>
     [Table("LSAItem", Schema = "public")]
     public class LSAItem : BaseEntity
     {
         private int _ID;
-        private string? _ItemCode;
+        private string? _ItemName;
         private string? _Type;
         private string? _SupplierCode;
         private string? _SupplierName;
@@ -25,11 +25,11 @@ namespace Pupa.BusinessObjects.Beesuite
             set { OnPropertyChanging(); _ID = value; OnPropertyChanged(); }
         }
 
-        [Column("ItemCode")]
-        public virtual string? ItemCode
+        [Column("ItemName")]
+        public virtual string? ItemName
         {
-            get { return _ItemCode; }
-            set { OnPropertyChanging(); _ItemCode = value; OnPropertyChanged(); }
+            get { return _ItemName; }
+            set { OnPropertyChanging(); _ItemName = value; OnPropertyChanged(); }
         }
 
         [Column("Type")]
