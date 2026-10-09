@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Pupa.BusinessObjects.Beesuite
 {
-    /// <summary>Header pemetaan LSA: Supplier + Type. Pasangan kode di LSAItemCode, vendor di LSAItemBundle (keduanya LSAItemID -> LSAItem.ID).</summary>
+    /// <summary>Header pemetaan LSA: Supplier + Type. Pasangan kode di LSAItemCode (LSAItemID), vendor lewat LSAItemVendorLink -> LSAItemVendor.</summary>
     [Table("LSAItem", Schema = "public")]
     public class LSAItem : BaseEntity
     {

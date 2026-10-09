@@ -106,7 +106,8 @@ namespace Pupa.BusinessObjects
         public DbSet<AccessLog> AccessLog { get; set; }
         public DbSet<AppConfig> AppConfig { get; set; }
         public DbSet<LSAItem> LSAItem { get; set; }
-        public DbSet<LSAItemBundle> LSAItemBundle { get; set; }
+        public DbSet<LSAItemVendor> LSAItemVendor { get; set; }
+        public DbSet<LSAItemVendorLink> LSAItemVendorLink { get; set; }
         public DbSet<LSAItemCode> LSAItemCode { get; set; }
         public DbSet<JobRequestAttachment> JobRequestAttachment { get; set; }
         public DbSet<JobAttachment> JobAttachment { get; set; }

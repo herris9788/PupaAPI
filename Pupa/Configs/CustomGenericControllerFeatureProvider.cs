@@ -89,7 +89,8 @@ namespace Pupa.Configs
             typeof(UserApprovalGroup),
             typeof(MandatoryVessel),
             typeof(MandatoryVesselApprover),
-            typeof(LSAItemBundle),
+            typeof(LSAItemVendor),
+            typeof(LSAItemVendorLink),
             typeof(LSAItemCode)
             // LSAItem: key gabungan, dilayani LSAItemController sendiri
         };
