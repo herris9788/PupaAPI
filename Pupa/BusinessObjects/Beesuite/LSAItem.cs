@@ -4,19 +4,14 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Pupa.BusinessObjects.Beesuite
 {
-    /// <summary>Item + supplier mapping untuk LSA. Tabel lokal Postgres (public."LSAItem"), lihat
-    /// Migrations/migration_LSAItem_v2.sql. Primary key: ID (identity). Induk = ItemVendor (input bebas); pasangan ItemCode/OldItemCode (Single) atau LSAItemBundle (Bundle),
-    /// supplier lewat SupplierCode + SupplierName.</summary>
+    /// <summary>Header pemetaan LSA: Supplier + Type. Pasangan kode di LSAItemCode, vendor di LSAItemBundle (keduanya LSAItemID -> LSAItem.ID).</summary>
     [Table("LSAItem", Schema = "public")]
     public class LSAItem : BaseEntity
     {
         private int _ID;
-        private string? _ItemCode;
         private string? _Type;
         private string? _SupplierCode;
         private string? _SupplierName;
-        private string? _ItemVendor;
-        private string? _OldItemCode;
 
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -48,28 +43,5 @@ namespace Pupa.BusinessObjects.Beesuite
             set { OnPropertyChanging(); _SupplierName = value; OnPropertyChanged(); }
         }
 
-        /// <summary>Kode item master (tipe Single), berpasangan dengan OldItemCode.</summary>
-        [Column("ItemCode")]
-        public virtual string? ItemCode
-        {
-            get { return _ItemCode; }
-            set { OnPropertyChanging(); _ItemCode = value; OnPropertyChanged(); }
-        }
-
-        /// <summary>Khusus tipe Single: nama item menurut vendor (input bebas).</summary>
-        [Column("ItemVendor")]
-        public virtual string? ItemVendor
-        {
-            get { return _ItemVendor; }
-            set { OnPropertyChanging(); _ItemVendor = value; OnPropertyChanged(); }
-        }
-
-        /// <summary>Kode item lama (input bebas), untuk pemetaan 1:1.</summary>
-        [Column("OldItemCode")]
-        public virtual string? OldItemCode
-        {
-            get { return _OldItemCode; }
-            set { OnPropertyChanging(); _OldItemCode = value; OnPropertyChanged(); }
-        }
     }
 }

@@ -89,7 +89,8 @@ namespace Pupa.Configs
             typeof(UserApprovalGroup),
             typeof(MandatoryVessel),
             typeof(MandatoryVesselApprover),
-            typeof(LSAItemBundle)
+            typeof(LSAItemBundle),
+            typeof(LSAItemCode)
             // LSAItem: key gabungan, dilayani LSAItemController sendiri
         };
         public static readonly Type[] EntityTypesExternal = new Type[] {
