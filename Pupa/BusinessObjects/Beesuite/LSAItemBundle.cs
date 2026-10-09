@@ -12,6 +12,7 @@ namespace Pupa.BusinessObjects.Beesuite
         private int _ID;
         private int? _LSAItemID;
         private string? _ItemCode;
+        private string? _OldItemCode;
         private decimal? _Qty;
 
         [Key]
@@ -35,6 +36,14 @@ namespace Pupa.BusinessObjects.Beesuite
         {
             get { return _ItemCode; }
             set { OnPropertyChanging(); _ItemCode = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Kode item lama, berpasangan dengan ItemCode pada baris yang sama.</summary>
+        [Column("OldItemCode")]
+        public virtual string? OldItemCode
+        {
+            get { return _OldItemCode; }
+            set { OnPropertyChanging(); _OldItemCode = value; OnPropertyChanged(); }
         }
 
         [Column("Qty")]

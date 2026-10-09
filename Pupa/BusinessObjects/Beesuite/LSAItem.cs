@@ -12,6 +12,7 @@ namespace Pupa.BusinessObjects.Beesuite
     {
         private int _ID;
         private string? _ItemName;
+        private string? _ItemCode;
         private string? _Type;
         private string? _SupplierCode;
         private string? _SupplierName;
@@ -53,6 +54,14 @@ namespace Pupa.BusinessObjects.Beesuite
         {
             get { return _SupplierName; }
             set { OnPropertyChanging(); _SupplierName = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Kode item master (tipe Single), berpasangan dengan OldItemCode.</summary>
+        [Column("ItemCode")]
+        public virtual string? ItemCode
+        {
+            get { return _ItemCode; }
+            set { OnPropertyChanging(); _ItemCode = value; OnPropertyChanged(); }
         }
 
         /// <summary>Khusus tipe Single: nama item menurut vendor (input bebas).</summary>
