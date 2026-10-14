@@ -148,5 +148,45 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _ForGroup;
             set { if (_ForGroup == value) return; OnPropertyChanging(); _ForGroup = value; OnPropertyChanged(); }
         }
+        /// <summary>Grade label shown for the item (display text).</summary>
+        private string? _GradeLabel;
+        [Column("GradeLabel")]
+        public virtual string? GradeLabel
+        {
+            get => _GradeLabel;
+            set { if (_GradeLabel == value) return; OnPropertyChanging(); _GradeLabel = value; OnPropertyChanged(); }
+        }
+        /// <summary>Item variant (display text).</summary>
+        private string? _Variant;
+        [Column("Variant")]
+        public virtual string? Variant
+        {
+            get => _Variant;
+            set { if (_Variant == value) return; OnPropertyChanging(); _Variant = value; OnPropertyChanged(); }
+        }
+        /// <summary>Display order within the list (ascending).</summary>
+        private int? _SortOrder;
+        [Column("SortOrder")]
+        public virtual int? SortOrder
+        {
+            get => _SortOrder;
+            set { if (_SortOrder == value) return; OnPropertyChanging(); _SortOrder = value; OnPropertyChanged(); }
+        }
+        /// <summary>Vessel group(s) this item is NOT offered to.</summary>
+        private string? _ExcludeForVesselGroup;
+        [Column("ExcludeForVesselGroup")]
+        public virtual string? ExcludeForVesselGroup
+        {
+            get => _ExcludeForVesselGroup;
+            set { if (_ExcludeForVesselGroup == value) return; OnPropertyChanging(); _ExcludeForVesselGroup = value; OnPropertyChanged(); }
+        }
+        /// <summary>false = hidden from Quick Order.</summary>
+        private bool? _IsActive = true;
+        [Column("IsActive")]
+        public virtual bool? IsActive
+        {
+            get => _IsActive;
+            set { if (_IsActive == value) return; OnPropertyChanging(); _IsActive = value; OnPropertyChanged(); }
+        }
     }
 }
