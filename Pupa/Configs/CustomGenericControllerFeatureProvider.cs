@@ -87,6 +87,7 @@ namespace Pupa.Configs
             typeof(ItemAliasName),
             typeof(ItemAlias),
             typeof(ItemSupplierCode),
+            typeof(Supplier),
             typeof(CustomPage),
             typeof(ItemEquivalent),
             typeof(ApprovalGroup),

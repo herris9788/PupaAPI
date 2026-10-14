@@ -122,6 +122,7 @@ namespace Pupa.BusinessObjects
         public DbSet<ItemAliasName> ItemAliasName { get; set; }
         public DbSet<ItemAlias> ItemAlias { get; set; }
         public DbSet<ItemSupplierCode> ItemSupplierCode { get; set; }
+        public DbSet<Supplier> Supplier { get; set; }
         public DbSet<CustomPage> CustomPage { get; set; }
         public DbSet<JobRequestCartItem> JobRequestCartItem { get; set; }
 
