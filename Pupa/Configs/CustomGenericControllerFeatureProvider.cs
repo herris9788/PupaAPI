@@ -88,6 +88,7 @@ namespace Pupa.Configs
             typeof(ItemAlias),
             typeof(ItemSupplierCode),
             typeof(Supplier),
+            typeof(RunningStoreHistory),
             typeof(CustomPage),
             typeof(ItemEquivalent),
             typeof(ApprovalGroup),
