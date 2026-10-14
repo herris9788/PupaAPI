@@ -10,6 +10,7 @@ namespace Pupa.BusinessObjects.Beesuite
         private int _ID;
         private int _inventoryUserID;
         private DateTime _requestDate;
+        private string? _documentNumber;
 
         [Key]
         [Column("ID")]
@@ -32,6 +33,13 @@ namespace Pupa.BusinessObjects.Beesuite
         {
             get => _requestDate;
             set { OnPropertyChanging(); _requestDate = value; OnPropertyChanged(); }
+        }
+
+        [Column("DocumentNumber")]
+        public virtual string? DocumentNumber
+        {
+            get => _documentNumber;
+            set { OnPropertyChanging(); _documentNumber = value; OnPropertyChanged(); }
         }
 
         [ForeignKey(nameof(InventoryUserID))]
