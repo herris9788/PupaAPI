@@ -119,6 +119,7 @@ namespace Pupa.BusinessObjects
         public DbSet<QuickOrderItem> QuickOrderItem { get; set; }
         public DbSet<Brand> Brand { get; set; }
         public DbSet<ICBrand> ICBrand { get; set; }
+        public DbSet<ItemAliasName> ItemAliasName { get; set; }
         public DbSet<CustomPage> CustomPage { get; set; }
         public DbSet<JobRequestCartItem> JobRequestCartItem { get; set; }
 

@@ -84,6 +84,7 @@ namespace Pupa.Configs
             typeof(QuickOrderItem),
             typeof(Brand),
             typeof(ICBrand),
+            typeof(ItemAliasName),
             typeof(CustomPage),
             typeof(ItemEquivalent),
             typeof(ApprovalGroup),
