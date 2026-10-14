@@ -19,7 +19,7 @@ namespace Pupa.BusinessObjects.Beesuite
         private bool? _approved;
         private string? _status;
         private string? _revertStatus;
-        private string? _revertTarget;
+        private string? _revertTargetAdmins;
         private string? _requisitionNumber;
         private int? _categoryID;
 
@@ -380,16 +380,15 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
-        [StringLength(100)]
-        [Column("RevertTarget")]
-        public virtual string? RevertTarget
+        [Column("RevertTargetAdmins")]
+        public virtual string? RevertTargetAdmins
         {
-            get => _revertTarget;
+            get => _revertTargetAdmins;
             set
             {
-                if (_revertTarget == value) return;
+                if (_revertTargetAdmins == value) return;
                 OnPropertyChanging();
-                _revertTarget = value;
+                _revertTargetAdmins = value;
                 OnPropertyChanged();
             }
         }
