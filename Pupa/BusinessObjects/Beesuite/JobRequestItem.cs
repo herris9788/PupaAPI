@@ -225,12 +225,12 @@ namespace Pupa.BusinessObjects.Beesuite
         }
 
         /// <summary>JSON string, parsed client-side.</summary>
-        private string? _AeNumber { get; set; }
-        [Column("AeNumber")]
-        public virtual string? AeNumber
+        private string? _Number { get; set; }
+        [Column("Number")]
+        public virtual string? Number
         {
-            get => _AeNumber;
-            set { if (_AeNumber == value) return; OnPropertyChanging(); _AeNumber = value; OnPropertyChanged(); }
+            get => _Number;
+            set { if (_Number == value) return; OnPropertyChanging(); _Number = value; OnPropertyChanged(); }
         }
 
         /// <summary>JSON string, parsed client-side.</summary>

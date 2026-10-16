@@ -903,6 +903,18 @@ namespace Pupa.BusinessObjects.Beesuite
                 OnPropertyChanged();
             }
         }
+        private bool? _Docking { get; set; }
+        public virtual bool? Docking
+        {
+            get => _Docking;
+            set
+            {
+                if (_Docking == value) return;
+                OnPropertyChanging();
+                _Docking = value;
+                OnPropertyChanged();
+            }
+        }
         private string? _RevisedBy { get; set; }
         public virtual string? RevisedBy
         {
