@@ -12,6 +12,7 @@ namespace Pupa.BusinessObjects.Beesuite
         private int? _LSAItemID;
         private string? _ItemCode;
         private string? _OldItemCode;
+        private bool _IsPrice;
 
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -41,6 +42,14 @@ namespace Pupa.BusinessObjects.Beesuite
         {
             get { return _OldItemCode; }
             set { OnPropertyChanging(); _OldItemCode = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Kode yang dipakai untuk harga. Bila LSAItem punya lebih dari satu kode, tepat satu yang true.</summary>
+        [Column("IsPrice")]
+        public virtual bool IsPrice
+        {
+            get { return _IsPrice; }
+            set { OnPropertyChanging(); _IsPrice = value; OnPropertyChanged(); }
         }
     }
 }
