@@ -259,5 +259,13 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _ItemFamily;
             set { if (_ItemFamily == value) return; OnPropertyChanging(); _ItemFamily = value; OnPropertyChanged(); }
         }
+
+        private string? _Condition { get; set; }
+        [Column("Condition")]
+        public virtual string? Condition
+        {
+            get => _Condition;
+            set { if (_Condition == value) return; OnPropertyChanging(); _Condition = value; OnPropertyChanged(); }
+        }
     }
 }
