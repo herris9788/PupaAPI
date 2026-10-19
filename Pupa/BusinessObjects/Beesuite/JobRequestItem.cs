@@ -267,5 +267,13 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _Condition;
             set { if (_Condition == value) return; OnPropertyChanging(); _Condition = value; OnPropertyChanged(); }
         }
+
+        private string? _Vessel { get; set; }
+        [Column("Vessel")]
+        public virtual string? Vessel
+        {
+            get => _Vessel;
+            set { if (_Vessel == value) return; OnPropertyChanging(); _Vessel = value; OnPropertyChanged(); }
+        }
     }
 }
