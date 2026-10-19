@@ -314,6 +314,12 @@ namespace Pupa.BusinessObjects
                 .HasForeignKey(c => c.TemplateID)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            modelBuilder.Entity<JobRequestItem>()
+                .HasOne(j => j.RequisitionFormTemplate)
+                .WithMany()
+                .HasForeignKey(j => j.RequisitionFormTemplateID)
+                .OnDelete(DeleteBehavior.SetNull);
+
             modelBuilder.Entity<RequisitionFormData>()
                 .HasOne(d => d.Requisition)
                 .WithMany()

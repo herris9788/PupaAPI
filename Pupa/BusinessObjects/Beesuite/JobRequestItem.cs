@@ -275,5 +275,16 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _Vessel;
             set { if (_Vessel == value) return; OnPropertyChanging(); _Vessel = value; OnPropertyChanged(); }
         }
+
+        private int? _RequisitionFormTemplateID { get; set; }
+        [Column("RequisitionFormTemplateID")]
+        public virtual int? RequisitionFormTemplateID
+        {
+            get => _RequisitionFormTemplateID;
+            set { if (_RequisitionFormTemplateID == value) return; OnPropertyChanging(); _RequisitionFormTemplateID = value; OnPropertyChanged(); }
+        }
+
+        [ForeignKey("RequisitionFormTemplateID")]
+        public virtual RequisitionFormTemplate? RequisitionFormTemplate { get; set; }
     }
 }
