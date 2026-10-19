@@ -286,5 +286,29 @@ namespace Pupa.BusinessObjects.Beesuite
 
         [ForeignKey("RequisitionFormTemplateID")]
         public virtual RequisitionFormTemplate? RequisitionFormTemplate { get; set; }
+
+        private string? _PartName { get; set; }
+        [Column("PartName")]
+        public virtual string? PartName
+        {
+            get => _PartName;
+            set { if (_PartName == value) return; OnPropertyChanging(); _PartName = value; OnPropertyChanged(); }
+        }
+
+        private string? _Dimension { get; set; }
+        [Column("Dimension")]
+        public virtual string? Dimension
+        {
+            get => _Dimension;
+            set { if (_Dimension == value) return; OnPropertyChanging(); _Dimension = value; OnPropertyChanged(); }
+        }
+
+        private string? _Material { get; set; }
+        [Column("Material")]
+        public virtual string? Material
+        {
+            get => _Material;
+            set { if (_Material == value) return; OnPropertyChanging(); _Material = value; OnPropertyChanged(); }
+        }
     }
 }
