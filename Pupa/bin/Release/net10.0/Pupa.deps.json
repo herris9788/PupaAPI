@@ -9,7 +9,7 @@
       "Pupa/1.0.0": {
         "dependencies": {
           "BouncyCastle.Cryptography": "2.7.0",
-          "DevOps.Models": "1.0.9",
+          "DevOps.Models": "1.0.10",
           "FluentFTP": "53.0.2",
           "GoogleAuthenticator": "3.2.0",
           "MailKit": "4.13.0",
@@ -79,7 +79,7 @@
           }
         }
       },
-      "DevOps.Models/1.0.9": {
+      "DevOps.Models/1.0.10": {
         "dependencies": {
           "BouncyCastle.Cryptography": "2.7.0",
           "Dapper": "2.1.66",
@@ -92,8 +92,8 @@
         },
         "runtime": {
           "lib/net10.0/Models.dll": {
-            "assemblyVersion": "1.0.9.0",
-            "fileVersion": "1.0.9.0"
+            "assemblyVersion": "1.0.10.0",
+            "fileVersion": "1.0.10.0"
           }
         }
       },
@@ -1054,12 +1054,12 @@
       "path": "dapper/2.1.66",
       "hashPath": "dapper.2.1.66.nupkg.sha512"
     },
-    "DevOps.Models/1.0.9": {
+    "DevOps.Models/1.0.10": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-miJhQyTc4YBIstX9uP5kJnwnsz6JNAPO86TA8xcWqiRRFGBaP4MsiwhhipqRVit0NoeO3/ujTE9FIA9UrzriIw==",
-      "path": "devops.models/1.0.9",
-      "hashPath": "devops.models.1.0.9.nupkg.sha512"
+      "sha512": "sha512-daP5GRRXVkRk7ostDtkxAGynPL1X5a42H3K3NPZGFrhLMlx1M4m9Vs4cl3WfL5jR9I55j0LMQbrqa3ADl9Fzpw==",
+      "path": "devops.models/1.0.10",
+      "hashPath": "devops.models.1.0.10.nupkg.sha512"
     },
     "FluentFTP/53.0.2": {
       "type": "package",

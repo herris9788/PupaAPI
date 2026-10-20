@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.OData;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.AspNetCore.OData.Query.Validator;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -33,27 +32,18 @@ namespace Pupa
         {
             AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
             AppContext.SetSwitch("Npgsql.DisableDateTimeInfinityConversions", true);
-
             services.AddLocalization();
             services.AddHttpContextAccessor();
             services.AddHttpClient();
             services.AddScoped<BeesuiteConnectionResolver>();
-
             services.AddDbContext<BeesuiteDbContext>((sp, options) =>
             {
                 var conn = sp.GetRequiredService<BeesuiteConnectionResolver>().ConnectionString;
                 options.UseNpgsql(conn);
-                // No lazy-loading proxies: navigation properties are only populated when
-                // explicitly Include()d. This keeps "return Ok(entity)" safe — un-loaded
-                // navigations serialize as null instead of triggering lazy loads
-                // mid-serialization (which caused circular graphs + DbContext errors).
             });
 
-            // Generic CRUD controllers live in DevOps.Models; Pupa supplies the DbContext + entity hooks.
-            services.AddScoped<Models.CustomOData.IEntityDbContextResolver, BeesuiteDbContextResolver>();
-            services.AddScoped<Models.CustomOData.IPupaEntityHooks, PupaEntityHooks>();
-
-            // ✅ Satu AddJsonOptions saja, semua setting digabung di sini
+            services.AddScoped<IEntityDbContextResolver, BeesuiteDbContextResolver>();
+            services.AddScoped<IPupaEntityHooks, PupaEntityHooks>();
             services.AddControllers()
                 .AddJsonOptions(options =>
                 {
@@ -76,17 +66,8 @@ namespace Pupa
                         {
                             odataServices.AddSingleton<ODataQueryValidator, OdataValidator>();
                         })
-                        // Must match SetMaxTop(1000) above — this call's maxTopValue arg
-                        // silently OVERRIDES the top-level MaxTop for this route only.
-                        // Was 100, causing every /beesuite/odata/* query with $top over
-                        // 100 (clients reasonably assume up to 1000, per the line above)
-                        // to fail with "The limit of '100' for Top query has been
-                        // exceeded" (ErrorLog Source='Backend', e.g. UserVesselRel with
-                        // $top=500). Found via SOLVE ERROR triage.
                         .EnableQueryFeatures(1000);
                 });
-
-            // ✅ Hanya untuk minimal API / HttpContext.Response.WriteAsJsonAsync
             services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =>
             {
                 options.SerializerOptions.IncludeFields = true;
@@ -94,7 +75,6 @@ namespace Pupa
                 options.SerializerOptions.PropertyNamingPolicy = null;
                 options.SerializerOptions.MaxDepth = 100;
             });
-
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
             {
                 options.SaveToken = true;
@@ -111,7 +91,6 @@ namespace Pupa
                     ClockSkew = TimeSpan.Zero
                 };
             });
-
             services.AddSwaggerGen(c =>
             {
                 c.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
@@ -141,7 +120,6 @@ namespace Pupa
                     Description = "Pupa API."
                 });
             });
-
             services.AddCors(x => x.AddPolicy("AllowSpecificOrigin", policyBuilder =>
             {
                 policyBuilder
@@ -150,18 +128,15 @@ namespace Pupa
                     .SetIsOriginAllowed((host) => true)
                     .AllowCredentials();
             }));
-
             services.AddSignalR().AddJsonProtocol(options =>
             {
                 options.PayloadSerializerOptions.PropertyNamingPolicy = null;
                 options.PayloadSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
                 options.PayloadSerializerOptions.MaxDepth = 100;
             });
-
             services.AddScoped<IFtpService, FtpService>();
-            services.AddScoped<Pupa.Services.RequisitionDynamicFormService>();
-            services.AddSingleton<Pupa.Services.DatabaseRestoreService>();
-
+            services.AddScoped<RequisitionDynamicFormService>();
+            services.AddSingleton<DatabaseRestoreService>();
             services.AddStackExchangeRedisCache(options =>
             {
                 options.Configuration = "172.16.9.29:6379,password=Hastalavista,defaultDatabase=0";
