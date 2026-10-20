@@ -12,6 +12,9 @@
   <ItemGroup>
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.7.0" />
     <PackageReference Include="DevOps.Models" Version="1.0.8" />
+    <!-- Keep the OData libraries on one version: DevOps.Models ships Edm 9.0.0-rc, mixing it with Core 8.x breaks Microsoft.OData.ModelBuilder (EdmLibHelpers type initializer). Same pins as Waruna.WebApi. -->
+    <PackageReference Include="Microsoft.OData.Core" Version="9.0.0-rc" />
+    <PackageReference Include="Microsoft.OData.Edm" Version="9.0.0-rc" />
     <PackageReference Include="FluentFTP" Version="53.0.2" />
     <PackageReference Include="GoogleAuthenticator" Version="3.2.0" />
     <PackageReference Include="MailKit" Version="4.13.0" />

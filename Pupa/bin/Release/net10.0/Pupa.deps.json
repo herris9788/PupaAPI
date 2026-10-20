@@ -20,6 +20,8 @@
           "Microsoft.EntityFrameworkCore.Design": "9.0.11",
           "Microsoft.EntityFrameworkCore.Proxies": "9.0.11",
           "Microsoft.Extensions.Caching.StackExchangeRedis": "9.0.11",
+          "Microsoft.OData.Core": "9.0.0-rc",
+          "Microsoft.OData.Edm": "9.0.0-rc",
           "MimeKit": "4.13.0",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "9.0.4",
           "Swashbuckle.AspNetCore": "6.9.0",
@@ -148,10 +150,10 @@
       },
       "Microsoft.AspNetCore.OData/9.3.2": {
         "dependencies": {
-          "Microsoft.OData.Core": "8.2.3",
+          "Microsoft.OData.Core": "9.0.0-rc",
           "Microsoft.OData.Edm": "9.0.0-rc",
           "Microsoft.OData.ModelBuilder": "2.0.0",
-          "Microsoft.Spatial": "8.2.3"
+          "Microsoft.Spatial": "9.0.0-rc"
         },
         "runtime": {
           "lib/net8.0/Microsoft.AspNetCore.OData.dll": {
@@ -710,16 +712,16 @@
           }
         }
       },
-      "Microsoft.OData.Core/8.2.3": {
+      "Microsoft.OData.Core/9.0.0-rc": {
         "dependencies": {
           "Microsoft.Bcl.AsyncInterfaces": "8.0.0",
           "Microsoft.OData.Edm": "9.0.0-rc",
-          "Microsoft.Spatial": "8.2.3"
+          "Microsoft.Spatial": "9.0.0-rc"
         },
         "runtime": {
-          "lib/net8.0/Microsoft.OData.Core.dll": {
-            "assemblyVersion": "8.2.3.0",
-            "fileVersion": "8.2.3.51211"
+          "lib/net10.0/Microsoft.OData.Core.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.0.10502"
           }
         }
       },
@@ -734,7 +736,7 @@
       "Microsoft.OData.ModelBuilder/2.0.0": {
         "dependencies": {
           "Microsoft.OData.Edm": "9.0.0-rc",
-          "Microsoft.Spatial": "8.2.3"
+          "Microsoft.Spatial": "9.0.0-rc"
         },
         "runtime": {
           "lib/net8.0/Microsoft.OData.ModelBuilder.dll": {
@@ -751,11 +753,11 @@
           }
         }
       },
-      "Microsoft.Spatial/8.2.3": {
+      "Microsoft.Spatial/9.0.0-rc": {
         "runtime": {
-          "lib/net8.0/Microsoft.Spatial.dll": {
-            "assemblyVersion": "8.2.3.0",
-            "fileVersion": "8.2.3.51211"
+          "lib/net10.0/Microsoft.Spatial.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.0.10502"
           }
         }
       },
@@ -1278,12 +1280,12 @@
       "path": "microsoft.identitymodel.tokens/8.0.1",
       "hashPath": "microsoft.identitymodel.tokens.8.0.1.nupkg.sha512"
     },
-    "Microsoft.OData.Core/8.2.3": {
+    "Microsoft.OData.Core/9.0.0-rc": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-c6AJxdmNHqTnH2XYQnYz4qttpIqfBpNBO4dZ68xDMxNN/+9Uu/pOKDZRAs7NCy50c+svCImh4v18J4g6Ycxoiw==",
-      "path": "microsoft.odata.core/8.2.3",
-      "hashPath": "microsoft.odata.core.8.2.3.nupkg.sha512"
+      "sha512": "sha512-SEH9IOFEXzAHQsU6T85Iz3cCL0qPCEO7OfnIjatdoNj3JjRwnNgkCMhhQScLO7nu+Ge8P9ynKndsPVHLjHX/pg==",
+      "path": "microsoft.odata.core/9.0.0-rc",
+      "hashPath": "microsoft.odata.core.9.0.0-rc.nupkg.sha512"
     },
     "Microsoft.OData.Edm/9.0.0-rc": {
       "type": "package",
@@ -1306,12 +1308,12 @@
       "path": "microsoft.openapi/1.6.14",
       "hashPath": "microsoft.openapi.1.6.14.nupkg.sha512"
     },
-    "Microsoft.Spatial/8.2.3": {
+    "Microsoft.Spatial/9.0.0-rc": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-N8rhHhMojEYdH9P+JG208+s6dpR5P1rVyiGaDB5oV2YTVH+zA5utK3V3V4ytAMLb4GaqOyLyzMOgSLEWM0ulgQ==",
-      "path": "microsoft.spatial/8.2.3",
-      "hashPath": "microsoft.spatial.8.2.3.nupkg.sha512"
+      "sha512": "sha512-ZU1KlI/GpVwgiM/GNtzoScs9xR7q/MtDMQgvXR8BRuH2VVDRv1nKbD1qiRkL1Kqu7tx80XccA5jfCfKCu0Oo7Q==",
+      "path": "microsoft.spatial/9.0.0-rc",
+      "hashPath": "microsoft.spatial.9.0.0-rc.nupkg.sha512"
     },
     "Microsoft.SqlServer.Server/1.0.0": {
       "type": "package",
