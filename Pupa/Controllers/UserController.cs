@@ -1214,6 +1214,18 @@ namespace Pupa.Controllers
             var UsernameLower = user.Username.ToLower();
             int Count = 0;
 
+            // The approver order saved on a Job Request at submit (an ADMIN/OS
+            // requester goes ahead of the ADMIN approvers under him) — see
+            // ApplyStoredApproverOrder. Without it the turn would be counted
+            // against the matrix order the pages no longer show.
+            var PendingJobIds = PendingJobs.Select(j => j.ID).ToList();
+            var StoredOrders = (await db.Set<JobFieldValue>().AsNoTracking()
+                    .Where(f => f.EntityType == "JobRequest" && f.FieldKey == "ApproverOrder"
+                             && f.EntityID.HasValue && PendingJobIds.Contains(f.EntityID.Value))
+                    .ToListAsync())
+                .GroupBy(f => f.EntityID!.Value)
+                .ToDictionary(g => g.Key, g => g.OrderByDescending(f => f.ID).First().ValueText);
+
             foreach (var Job in PendingJobs)
             {
                 try
@@ -1253,18 +1265,20 @@ namespace Pupa.Controllers
                     }
                     if (PendingLevel > MaxLevel) continue;
 
+                    var ChainByLevel = new Dictionary<int, List<string>>();
                     foreach (dynamic Item in Payload.Data.Items)
                     {
-                        if ((int)Item.Level == PendingLevel)
-                        {
-                            // Multiple tied approvers at this level (see
-                            // ResolveApprovers' new Usernames field) — any one of
-                            // them counts as pending for them.
-                            List<string> Unames = Item.Usernames;
-                            if (Unames.Any(u => !string.IsNullOrEmpty(u) && u.ToLower() == UsernameLower)) Count++;
-                            break;
-                        }
+                        List<string> Names = Item.Usernames;
+                        ChainByLevel[(int)Item.Level] = Names;
                     }
+                    if (StoredOrders.TryGetValue(Job.ID, out var StoredOrder))
+                        ChainByLevel = ApplyStoredApproverOrder(ChainByLevel, StoredOrder);
+
+                    // Multiple tied approvers at this level (see ResolveApprovers'
+                    // Usernames field) — any one of them counts as pending for them.
+                    if (ChainByLevel.TryGetValue(PendingLevel, out var Unames)
+                        && Unames.Any(u => !string.IsNullOrEmpty(u) && u.ToLower() == UsernameLower))
+                        Count++;
                 }
                 catch
                 {
@@ -1273,6 +1287,36 @@ namespace Pupa.Controllers
             }
 
             return Count;
+        }
+
+        /// <summary>
+        /// [chain] (Level -> every tied approver) with the order saved on the
+        /// Job Request ([stored], the ApproverOrder JobFieldValue's JSON, e.g.
+        /// {"2":["ellypar"],"3":["nursiwan"]}) applied — only when it covers
+        /// exactly the levels [chain] has; if the matrix changed since, or the
+        /// text is not that shape, [chain] is returned as it is. Mirrors the
+        /// app's JobRequestApprovalRules.applyStoredOrder.
+        /// </summary>
+        private static Dictionary<int, List<string>> ApplyStoredApproverOrder(Dictionary<int, List<string>> chain, string? stored)
+        {
+            if (string.IsNullOrWhiteSpace(stored)) return chain;
+            try
+            {
+                var Parsed = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, List<string>>>(stored);
+                if (Parsed == null) return chain;
+                var Order = new Dictionary<int, List<string>>();
+                foreach (var Entry in Parsed)
+                {
+                    if (!int.TryParse(Entry.Key, out var Level) || Entry.Value == null) return chain;
+                    Order[Level] = Entry.Value;
+                }
+                bool SameLevels = Order.Count == chain.Count && Order.Keys.All(chain.ContainsKey);
+                return SameLevels ? Order : chain;
+            }
+            catch
+            {
+                return chain;
+            }
         }
 
 
