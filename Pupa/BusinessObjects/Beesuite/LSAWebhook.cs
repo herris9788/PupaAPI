@@ -1,4 +1,5 @@
 using System;
+using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -50,5 +51,8 @@ namespace Pupa.BusinessObjects.Beesuite
             get { return _CreatedAt; }
             set { OnPropertyChanging(); _CreatedAt = value; OnPropertyChanged(); }
         }
+
+        /// <summary>Lampiran milik webhook ini (LSAWebhookAttachment.WebhookID). Ambil lewat $expand=Attachments.</summary>
+        public virtual ObservableCollection<LSAWebhookAttachment>? Attachments { get; set; }
     }
 }

@@ -58,5 +58,8 @@ namespace Pupa.BusinessObjects.Beesuite
             get { return _CreatedAt; }
             set { OnPropertyChanging(); _CreatedAt = value; OnPropertyChanged(); }
         }
+
+        /// <summary>Webhook induk (WebhookID -> LSAWebhook.ID). Ambil lewat $expand=Webhook.</summary>
+        public virtual LSAWebhook? Webhook { get; set; }
     }
 }

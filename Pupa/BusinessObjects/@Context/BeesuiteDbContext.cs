@@ -166,6 +166,12 @@ namespace Pupa.BusinessObjects
                 .Ignore(u => u.UserVesselRels);
 
             modelBuilder.Entity<LSAItem>().HasKey(x => x.ID);
+            // N8N.LSAWebhook 1 - N N8N.LSAWebhookAttachment (tanpa FK constraint di DB, relasi hanya di EF/OData)
+            modelBuilder.Entity<LSAWebhookAttachment>()
+                .HasOne(a => a.Webhook)
+                .WithMany(w => w.Attachments)
+                .HasForeignKey(a => a.WebhookID)
+                .HasPrincipalKey(w => w.ID);
             modelBuilder.Entity<InventoryUser>().HasKey(iu => iu.ID);
             modelBuilder.Entity<InventoryUserGroup>().HasKey(iug => iug.ID);
             modelBuilder.Entity<InventoryUser>()
