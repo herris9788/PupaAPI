@@ -13,6 +13,7 @@ namespace Pupa.BusinessObjects.Beesuite
         private string? _SupplierCode;
         private string? _SupplierName;
         private string? _Database;
+        private string? _InquiryNumber;
         private DateTime _CreatedAt = DateTime.Now;
 
         [Key]
@@ -43,6 +44,13 @@ namespace Pupa.BusinessObjects.Beesuite
         {
             get { return _Database; }
             set { OnPropertyChanging(); _Database = value; OnPropertyChanged(); }
+        }
+
+        [Column("InquiryNumber")]
+        public virtual string? InquiryNumber
+        {
+            get { return _InquiryNumber; }
+            set { OnPropertyChanging(); _InquiryNumber = value; OnPropertyChanged(); }
         }
 
         [Column("CreatedAt")]
