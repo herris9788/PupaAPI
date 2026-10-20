@@ -318,5 +318,13 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _Cargo;
             set { if (_Cargo == value) return; OnPropertyChanging(); _Cargo = value; OnPropertyChanged(); }
         }
+
+        private bool _IsActive { get; set; } = true;
+        [Column("IsActive")]
+        public virtual bool IsActive
+        {
+            get => _IsActive;
+            set { if (_IsActive == value) return; OnPropertyChanging(); _IsActive = value; OnPropertyChanged(); }
+        }
     }
 }
