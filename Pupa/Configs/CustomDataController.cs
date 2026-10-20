@@ -128,7 +128,7 @@ namespace Pupa.Configs
             {
                 return BadRequest("Incorrect body.");
             }
-            var entity = await _db.Set<TEntity>().FindAsync(key);
+            var entity = await FindByKeyAsync(key);
             if (entity == null)
             {
                 return NotFound();
@@ -247,6 +247,16 @@ namespace Pupa.Configs
             return changedPropertyNames;
         }
 
+        // FindAsync needs the key boxed as the PK's CLR type; a plain int key throws for
+        // long/short/etc. primary keys (e.g. LSAWebhook.ID is long).
+        private async Task<TEntity?> FindByKeyAsync(int key)
+        {
+            var keyType = _db.Model.FindEntityType(typeof(TEntity))?.FindPrimaryKey()?.Properties[0]?.ClrType ?? typeof(int);
+            keyType = Nullable.GetUnderlyingType(keyType) ?? keyType;
+            object boxed = keyType == typeof(int) ? key : Convert.ChangeType(key, keyType);
+            return await _db.Set<TEntity>().FindAsync(boxed);
+        }
+
         // PUT /{EntitySet}(key)
         public async Task<IActionResult> Put(int key, [FromBody] TEntity update)
         {
@@ -254,7 +264,7 @@ namespace Pupa.Configs
             {
                 return BadRequest("Incorrect body.");
             }
-            var entity = await _db.Set<TEntity>().FindAsync(key);
+            var entity = await FindByKeyAsync(key);
             if (entity == null)
             {
                 return NotFound();
@@ -274,7 +284,7 @@ namespace Pupa.Configs
         // DELETE /{EntitySet}(key)
         public async Task<IActionResult> Delete(int key)
         {
-            var entity = await _db.Set<TEntity>().FindAsync(key);
+            var entity = await FindByKeyAsync(key);
             if (entity == null)
             {
                 return NotFound();
@@ -284,6 +294,13 @@ namespace Pupa.Configs
                 // Captured before removal — see SyncLegacyMirrorForVessel.
                 int? deletedVesselId = (entity as UserApprovalScope2)?.VesselID;
                 short? deletedLevel = (entity as UserApprovalScope2)?.Level;
+
+                // N8N.LSAWebhookAttachment has no DB-level FK: delete the children manually.
+                if (entity is LSAWebhook webhook)
+                {
+                    var atts = _db.Set<LSAWebhookAttachment>().Where(a => a.WebhookID == webhook.ID);
+                    _db.Set<LSAWebhookAttachment>().RemoveRange(atts);
+                }
 
                 _db.Set<TEntity>().Remove(entity);
                 await _db.SaveChangesAsync();
