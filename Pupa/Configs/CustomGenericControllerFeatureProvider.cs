@@ -98,7 +98,9 @@ namespace Pupa.Configs
             typeof(MandatoryVesselApprover),
             typeof(LSAItemVendor),
             typeof(LSAItemVendorLink),
-            typeof(LSAItemCode)
+            typeof(LSAItemCode),
+            typeof(LSAWebhook),
+            typeof(LSAWebhookAttachment)
             // LSAItem: key gabungan, dilayani LSAItemController sendiri
         };
         public static readonly Type[] EntityTypesExternal = new Type[] {
