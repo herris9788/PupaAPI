@@ -1,14 +1,10 @@
 using Pupa.BusinessObjects;
 using Pupa.BusinessObjects.Beesuite;
-using Microsoft.AspNetCore.Mvc.ApplicationParts;
-using Microsoft.AspNetCore.Mvc.Controllers;
-using Microsoft.AspNetCore.OData.Deltas;
-using System.Reflection;
 using BeeSuite.WebApi.BusinessObjects.Beesuite;
 
 namespace Pupa.Configs
 {
-    public class CustomGenericControllerFeatureProvider : IApplicationFeatureProvider<ControllerFeature>
+    public static class PupaEntityList
     {
         public static readonly Type[] EntityTypes = new Type[] {
             // Item is handled by ItemODataController (supports vesselId paint filter)
@@ -106,38 +102,5 @@ namespace Pupa.Configs
         public static readonly Type[] EntityTypesExternal = new Type[] {
           //typeof(SH_01), typeof(SH_02)
         };
-
-        private readonly IServiceCollection serviceCollection;
-        public CustomGenericControllerFeatureProvider(IServiceCollection serviceCollection)
-        {
-            this.serviceCollection = serviceCollection;
-        }
-        public void PopulateFeature(IEnumerable<ApplicationPart> parts, ControllerFeature feature)
-        {
-            foreach (Type entityType in EntityTypes)
-            {
-                // create controller TypeInfo and get underlying Type for robust equality checks
-                var controllerTypeInfo = typeof(CustomDataController<>)
-                    .MakeGenericType(entityType)
-                    .GetTypeInfo();
-                var controllerType = controllerTypeInfo.AsType();
-
-                // Avoid adding duplicate controller types which cause Swagger to see duplicate method/path combos
-                // Compare underlying Type rather than TypeInfo instances
-                if (!feature.Controllers.Any(t => t.AsType() == controllerType))
-                {
-                    feature.Controllers.Add(controllerTypeInfo);
-                }
-            }
-            //foreach (Type ent in EntityTypesExternal)
-            //{
-            //  if(ent == typeof(En))
-            //  {
-            //    Type deltaType = typeof(Delta<>).MakeGenericType(ent);
-            //    feature.Controllers.Add(typeof(UserCon<,>).MakeGenericType(ent, deltaType).GetTypeInfo());
-            //
-            //  }
-            //}
-        }
     }
 }

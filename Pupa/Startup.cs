@@ -1,4 +1,6 @@
-﻿using Pupa.Configs;
+using Models.Configs;
+using Models.CustomOData;
+using Pupa.Configs;
 using Pupa.BusinessObjects;
 using Pupa.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -47,8 +49,9 @@ namespace Pupa
                 // mid-serialization (which caused circular graphs + DbContext errors).
             });
 
-            services.TryAddEnumerable(
-                ServiceDescriptor.Transient<Microsoft.AspNetCore.Mvc.ApplicationModels.IApplicationModelProvider, GenericControllerNameProvider>());
+            // Generic CRUD controllers live in DevOps.Models; Pupa supplies the DbContext + entity hooks.
+            services.AddScoped<Models.CustomOData.IEntityDbContextResolver, BeesuiteDbContextResolver>();
+            services.AddScoped<Models.CustomOData.IPupaEntityHooks, PupaEntityHooks>();
 
             // ✅ Satu AddJsonOptions saja, semua setting digabung di sini
             services.AddControllers()
@@ -61,10 +64,7 @@ namespace Pupa
                     options.JsonSerializerOptions.IncludeFields = true;
                     options.JsonSerializerOptions.DictionaryKeyPolicy = null;
                 })
-                .ConfigureApplicationPartManager(partManager =>
-                {
-                    partManager.FeatureProviders.Add(new CustomGenericControllerFeatureProvider(services));
-                })
+                .AddPupaModels(PupaEntityList.EntityTypes)
                 .AddOData((options, serviceProvider) =>
                 {
                     TimeZoneInfo.ClearCachedData();

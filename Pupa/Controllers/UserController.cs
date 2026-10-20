@@ -1200,7 +1200,7 @@ namespace Pupa.Controllers
 
             // JobRequest.VesselInventoryUserRowID holds InventoryUser.ID (the
             // PK) despite the name — confirmed against real data (see
-            // CustomDataController.SyncLegacyMirrorForVessel for the same
+            // PupaEntityHooks.SyncLegacyMirrorForVessel for the same
             // finding), so it's compared directly against InventoryUser.ID
             // via UserVesselRel.VesselID (also the PK) here.
             var PendingJobs = await db.JobRequest

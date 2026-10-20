@@ -10,7 +10,7 @@ namespace Pupa.Controllers
 {
     /// <summary>
     /// Dedicated OData controller for the Item entity set.
-    /// Overrides the generic <see cref="CustomDataController{Item}"/> so we can
+    /// Overrides the generic <see cref="PupaDataController{Item}"/> so we can
     /// intercept the optional <c>vesselId</c> query parameter and pre-filter
     /// paint items (T06.001 prefix) to only those allowed for the vessel's paint group.
     /// Non-paint items are never filtered out.
