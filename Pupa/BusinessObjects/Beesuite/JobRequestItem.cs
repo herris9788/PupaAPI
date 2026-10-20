@@ -311,12 +311,12 @@ namespace Pupa.BusinessObjects.Beesuite
             set { if (_Material == value) return; OnPropertyChanging(); _Material = value; OnPropertyChanged(); }
         }
 
-        private string? _CARGO { get; set; }
-        [Column("CARGO")]
-        public virtual string? CARGO
+        private string? _Cargo { get; set; }
+        [Column("Cargo")]
+        public virtual string? Cargo
         {
-            get => _CARGO;
-            set { if (_CARGO == value) return; OnPropertyChanging(); _CARGO = value; OnPropertyChanged(); }
+            get => _Cargo;
+            set { if (_Cargo == value) return; OnPropertyChanging(); _Cargo = value; OnPropertyChanged(); }
         }
     }
 }
