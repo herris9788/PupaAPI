@@ -15,7 +15,7 @@ namespace Pupa.BusinessObjects.Beesuite
         private string? _Database;
         private string? _Remarks;
         private string? _Attachment;
-        private string? _FinalAttachment;
+        private bool _IsFinal;
         private DateTime _CreatedAt = DateTime.Now;
 
         [Key]
@@ -62,12 +62,12 @@ namespace Pupa.BusinessObjects.Beesuite
             set { OnPropertyChanging(); _Attachment = value; OnPropertyChanged(); }
         }
 
-        /// <summary>File Final Quotation (data URL base64) yang diupload vendor di step 7 Portal.</summary>
-        [Column("FinalAttachment")]
-        public virtual string? FinalAttachment
+        /// <summary>true = baris Final Quotation (duplikat submitan terbaru, file final di Attachment).</summary>
+        [Column("IsFinal")]
+        public virtual bool IsFinal
         {
-            get { return _FinalAttachment; }
-            set { OnPropertyChanging(); _FinalAttachment = value; OnPropertyChanged(); }
+            get { return _IsFinal; }
+            set { OnPropertyChanging(); _IsFinal = value; OnPropertyChanged(); }
         }
 
         [Column("CreatedAt")]
