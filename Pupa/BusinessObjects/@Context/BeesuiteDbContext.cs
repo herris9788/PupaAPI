@@ -113,6 +113,8 @@ namespace Pupa.BusinessObjects
         public DbSet<LSAWebhookAttachment> LSAWebhookAttachment { get; set; }
         public DbSet<LSAQuotation> LSAQuotation { get; set; }
         public DbSet<LSAQuotationDetail> LSAQuotationDetail { get; set; }
+        public DbSet<LSAJob> LSAJob { get; set; }
+        public DbSet<LSAJobDetail> LSAJobDetail { get; set; }
         public DbSet<JobRequestAttachment> JobRequestAttachment { get; set; }
         public DbSet<JobAttachment> JobAttachment { get; set; }
         public DbSet<Usage> Usage { get; set; }
@@ -179,6 +181,12 @@ namespace Pupa.BusinessObjects
                 .HasOne(x => x.Quotation)
                 .WithMany(x => x.Details)
                 .HasForeignKey(x => x.QuotationID)
+                .HasPrincipalKey(x => x.ID);
+            // N8N.LSAJob 1 - N N8N.LSAJobDetail (FK ON DELETE CASCADE di DB)
+            modelBuilder.Entity<LSAJobDetail>()
+                .HasOne(x => x.Job)
+                .WithMany(x => x.Details)
+                .HasForeignKey(x => x.JobID)
                 .HasPrincipalKey(x => x.ID);
             modelBuilder.Entity<InventoryUser>().HasKey(iu => iu.ID);
             modelBuilder.Entity<InventoryUserGroup>().HasKey(iug => iug.ID);
