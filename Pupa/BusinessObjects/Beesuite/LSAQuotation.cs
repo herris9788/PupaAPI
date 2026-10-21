@@ -16,6 +16,7 @@ namespace Pupa.BusinessObjects.Beesuite
         private string? _Remarks;
         private string? _Attachment;
         private bool _IsFinal;
+        private bool _Proceed;
         private DateTime _CreatedAt = DateTime.Now;
 
         [Key]
@@ -68,6 +69,14 @@ namespace Pupa.BusinessObjects.Beesuite
         {
             get { return _IsFinal; }
             set { OnPropertyChanging(); _IsFinal = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>true = baris ini sudah diproses oleh N8N (default false).</summary>
+        [Column("Proceed")]
+        public virtual bool Proceed
+        {
+            get { return _Proceed; }
+            set { OnPropertyChanging(); _Proceed = value; OnPropertyChanged(); }
         }
 
         [Column("CreatedAt")]
