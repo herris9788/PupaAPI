@@ -15,6 +15,7 @@ namespace Pupa.BusinessObjects.Beesuite
         private string? _Database;
         private string? _Remarks;
         private string? _Attachment;
+        private string? _FinalAttachment;
         private DateTime _CreatedAt = DateTime.Now;
 
         [Key]
@@ -59,6 +60,14 @@ namespace Pupa.BusinessObjects.Beesuite
         {
             get { return _Attachment; }
             set { OnPropertyChanging(); _Attachment = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>File Final Quotation (data URL base64) yang diupload vendor di step 7 Portal.</summary>
+        [Column("FinalAttachment")]
+        public virtual string? FinalAttachment
+        {
+            get { return _FinalAttachment; }
+            set { OnPropertyChanging(); _FinalAttachment = value; OnPropertyChanged(); }
         }
 
         [Column("CreatedAt")]
