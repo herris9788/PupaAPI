@@ -111,6 +111,8 @@ namespace Pupa.BusinessObjects
         public DbSet<LSAItemCode> LSAItemCode { get; set; }
         public DbSet<LSAWebhook> LSAWebhook { get; set; }
         public DbSet<LSAWebhookAttachment> LSAWebhookAttachment { get; set; }
+        public DbSet<LSAQuotation> LSAQuotation { get; set; }
+        public DbSet<LSAQuotationDetail> LSAQuotationDetail { get; set; }
         public DbSet<JobRequestAttachment> JobRequestAttachment { get; set; }
         public DbSet<JobAttachment> JobAttachment { get; set; }
         public DbSet<Usage> Usage { get; set; }
@@ -172,6 +174,12 @@ namespace Pupa.BusinessObjects
                 .WithMany(w => w.Attachments)
                 .HasForeignKey(a => a.WebhookID)
                 .HasPrincipalKey(w => w.ID);
+            // N8N.LSAQuotation 1 - N N8N.LSAQuotationDetail (tanpa FK constraint di DB)
+            modelBuilder.Entity<LSAQuotationDetail>()
+                .HasOne(x => x.Quotation)
+                .WithMany(x => x.Details)
+                .HasForeignKey(x => x.QuotationID)
+                .HasPrincipalKey(x => x.ID);
             modelBuilder.Entity<InventoryUser>().HasKey(iu => iu.ID);
             modelBuilder.Entity<InventoryUserGroup>().HasKey(iug => iug.ID);
             modelBuilder.Entity<InventoryUser>()

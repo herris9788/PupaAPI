@@ -92,6 +92,13 @@ namespace Pupa.Configs
                 _db.Set<LSAWebhookAttachment>().RemoveRange(atts);
             }
 
+            // N8N.LSAQuotationDetail has no DB-level FK either.
+            if (entity is LSAQuotation quotation)
+            {
+                var details = _db.Set<LSAQuotationDetail>().Where(x => x.QuotationID == quotation.ID);
+                _db.Set<LSAQuotationDetail>().RemoveRange(details);
+            }
+
             // Captured before removal -- see SyncLegacyMirrorForVessel.
             object state = entity is UserApprovalScope2 s ? new ScopeState(s.VesselID, s.Level) : null;
             return Task.FromResult(state);
