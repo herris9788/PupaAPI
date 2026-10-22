@@ -11,6 +11,7 @@ namespace Pupa.BusinessObjects.Beesuite
     {
         private long _ID;
         private long _JobID;
+        private string? _Group;
         private string? _ItemCode;
         private string? _OldItemCode;
         private string? _ItemVendor;
@@ -34,6 +35,14 @@ namespace Pupa.BusinessObjects.Beesuite
         {
             get { return _JobID; }
             set { OnPropertyChanging(); _JobID = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Group item pada baris detail, mis. "Service &amp; Renew Certificate".</summary>
+        [Column("Group")]
+        public virtual string? Group
+        {
+            get { return _Group; }
+            set { OnPropertyChanging(); _Group = value; OnPropertyChanged(); }
         }
 
         [Column("ItemCode")]
