@@ -13,6 +13,7 @@ namespace Pupa.BusinessObjects.Beesuite
         private string? _DocumentNo;
         private string? _SupplierCode;
         private string? _Database;
+        private decimal _Discount;
         private string? _FileName;
         private string _Status = "Pending";
         private string? _Error;
@@ -48,6 +49,14 @@ namespace Pupa.BusinessObjects.Beesuite
         {
             get { return _Database; }
             set { OnPropertyChanging(); _Database = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Diskon per dokumen (nominal), default 0.</summary>
+        [Column("Discount")]
+        public virtual decimal Discount
+        {
+            get { return _Discount; }
+            set { OnPropertyChanging(); _Discount = value; OnPropertyChanged(); }
         }
 
         [Column("FileName")]
