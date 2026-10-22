@@ -12,6 +12,7 @@ namespace Pupa.BusinessObjects.Beesuite
         private long _ID;
         private string? _DocumentNo;
         private string? _SupplierCode;
+        private string? _Database;
         private string? _FileName;
         private string _Status = "Pending";
         private string? _Error;
@@ -39,6 +40,14 @@ namespace Pupa.BusinessObjects.Beesuite
         {
             get { return _SupplierCode; }
             set { OnPropertyChanging(); _SupplierCode = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Database Ascend asal job (mis. AS_WNS).</summary>
+        [Column("Database")]
+        public virtual string? Database
+        {
+            get { return _Database; }
+            set { OnPropertyChanging(); _Database = value; OnPropertyChanged(); }
         }
 
         [Column("FileName")]
