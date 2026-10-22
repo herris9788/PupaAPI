@@ -12,6 +12,7 @@ namespace Pupa.BusinessObjects.Beesuite
         private string? _Type;
         private string? _SupplierCode;
         private string? _SupplierName;
+        private string? _Group;
 
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -20,6 +21,14 @@ namespace Pupa.BusinessObjects.Beesuite
         {
             get { return _ID; }
             set { OnPropertyChanging(); _ID = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Group item pada LSA, mis. "Service &amp; Renew Certificate" atau "Material for Liferaft".</summary>
+        [Column("Group")]
+        public virtual string? Group
+        {
+            get { return _Group; }
+            set { OnPropertyChanging(); _Group = value; OnPropertyChanged(); }
         }
 
         [Column("Type")]
