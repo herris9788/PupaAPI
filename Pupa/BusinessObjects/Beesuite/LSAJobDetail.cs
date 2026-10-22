@@ -14,6 +14,7 @@ namespace Pupa.BusinessObjects.Beesuite
         private string? _ItemCode;
         private string? _OldItemCode;
         private string? _ItemVendor;
+        private string? _ItemVendors;
         private decimal? _Qty;
         private decimal? _Price;
         private decimal? _Amount;
@@ -54,6 +55,14 @@ namespace Pupa.BusinessObjects.Beesuite
         {
             get { return _ItemVendor; }
             set { OnPropertyChanging(); _ItemVendor = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>JSON bebas (jsonb), disimpan/dibaca sebagai string JSON.</summary>
+        [Column("ItemVendors", TypeName = "jsonb")]
+        public virtual string? ItemVendors
+        {
+            get { return _ItemVendors; }
+            set { OnPropertyChanging(); _ItemVendors = value; OnPropertyChanged(); }
         }
 
         [Column("Qty")]
