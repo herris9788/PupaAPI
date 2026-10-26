@@ -172,6 +172,38 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _MandatoryAttachment;
             set { if (_MandatoryAttachment == value) return; OnPropertyChanging(); _MandatoryAttachment = value; OnPropertyChanged(); }
         }
+        /// <summary>Lube Oil: standard cycle in months since the last request of the same oil; empty = no interval rule.</summary>
+        private int? _CycleMonths;
+        [Column("CycleMonths")]
+        public virtual int? CycleMonths
+        {
+            get => _CycleMonths;
+            set { if (_CycleMonths == value) return; OnPropertyChanging(); _CycleMonths = value; OnPropertyChanged(); }
+        }
+        /// <summary>Lube Oil: a request is EARLY until this many days before the cycle runs out.</summary>
+        private int? _EarlyRequestDays;
+        [Column("EarlyRequestDays")]
+        public virtual int? EarlyRequestDays
+        {
+            get => _EarlyRequestDays;
+            set { if (_EarlyRequestDays == value) return; OnPropertyChanging(); _EarlyRequestDays = value; OnPropertyChanged(); }
+        }
+        /// <summary>Lube Oil: the purposes an Early Request chooses from, a list like [Long Voyage, Damage / Trouble]; empty = none.</summary>
+        private string? _PurposeOptions;
+        [Column("PurposeOptions")]
+        public virtual string? PurposeOptions
+        {
+            get => _PurposeOptions;
+            set { if (_PurposeOptions == value) return; OnPropertyChanging(); _PurposeOptions = value; OnPropertyChanged(); }
+        }
+        /// <summary>Lube Oil: the purpose that also asks the Damage Report; empty = none.</summary>
+        private string? _DamagePurpose;
+        [Column("DamagePurpose")]
+        public virtual string? DamagePurpose
+        {
+            get => _DamagePurpose;
+            set { if (_DamagePurpose == value) return; OnPropertyChanging(); _DamagePurpose = value; OnPropertyChanged(); }
+        }
         /// <summary>Display order within the list (ascending).</summary>
         private int? _SortOrder;
         [Column("SortOrder")]
