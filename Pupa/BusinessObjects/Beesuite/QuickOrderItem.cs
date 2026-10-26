@@ -164,6 +164,14 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _Variant;
             set { if (_Variant == value) return; OnPropertyChanging(); _Variant = value; OnPropertyChanged(); }
         }
+        /// <summary>Lube Oil: the attachments a requisition with this item must carry, a list like [Running Hours, Oil Consumption]; empty = none.</summary>
+        private string? _MandatoryAttachment;
+        [Column("MandatoryAttachment")]
+        public virtual string? MandatoryAttachment
+        {
+            get => _MandatoryAttachment;
+            set { if (_MandatoryAttachment == value) return; OnPropertyChanging(); _MandatoryAttachment = value; OnPropertyChanged(); }
+        }
         /// <summary>Display order within the list (ascending).</summary>
         private int? _SortOrder;
         [Column("SortOrder")]
