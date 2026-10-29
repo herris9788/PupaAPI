@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Metadata;
 using BeeSuite.WebApi.BusinessObjects.Beesuite;
+using Pupa.BusinessObjects.Vendor;
 using System.Linq;
 
 namespace Pupa.BusinessObjects
@@ -128,6 +129,7 @@ namespace Pupa.BusinessObjects
         public DbSet<ItemAliasName> ItemAliasName { get; set; }
         public DbSet<ItemAlias> ItemAlias { get; set; }
         public DbSet<ItemSupplierCode> ItemSupplierCode { get; set; }
+        public DbSet<PaymentDocument> PaymentDocument { get; set; }
         public DbSet<Supplier> Supplier { get; set; }
         public DbSet<RunningStoreHistory> RunningStoreHistory { get; set; }
         public DbSet<CustomPage> CustomPage { get; set; }

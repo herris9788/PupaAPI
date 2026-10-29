@@ -1,6 +1,7 @@
 using Pupa.BusinessObjects;
 using Pupa.BusinessObjects.Beesuite;
 using BeeSuite.WebApi.BusinessObjects.Beesuite;
+using Pupa.BusinessObjects.Vendor;
 
 namespace Pupa.Configs
 {
@@ -100,7 +101,8 @@ namespace Pupa.Configs
             typeof(LSAQuotation),
             typeof(LSAQuotationDetail),
             typeof(LSAJob),
-            typeof(LSAJobDetail)
+            typeof(LSAJobDetail),
+            typeof(PaymentDocument)
             // LSAItem: key gabungan, dilayani LSAItemController sendiri
         };
         public static readonly Type[] EntityTypesExternal = new Type[] {
