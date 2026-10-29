@@ -19,6 +19,8 @@ namespace Pupa.BusinessObjects.Beesuite
         private decimal? _Qty;
         private decimal? _Price;
         private decimal? _Amount;
+        private decimal? _ProcessQty;
+        private decimal? _ProcessPrice;
         private DateTime _CreatedAt = DateTime.Now;
 
         [Key]
@@ -93,6 +95,20 @@ namespace Pupa.BusinessObjects.Beesuite
         {
             get { return _Amount; }
             set { OnPropertyChanging(); _Amount = value; OnPropertyChanged(); }
+        }
+
+        [Column("ProcessQty")]
+        public virtual decimal? ProcessQty
+        {
+            get { return _ProcessQty; }
+            set { OnPropertyChanging(); _ProcessQty = value; OnPropertyChanged(); }
+        }
+
+        [Column("ProcessPrice")]
+        public virtual decimal? ProcessPrice
+        {
+            get { return _ProcessPrice; }
+            set { OnPropertyChanging(); _ProcessPrice = value; OnPropertyChanged(); }
         }
 
         [Column("CreatedAt")]
