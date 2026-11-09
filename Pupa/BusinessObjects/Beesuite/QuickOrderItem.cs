@@ -164,6 +164,15 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _Variant;
             set { if (_Variant == value) return; OnPropertyChanging(); _Variant = value; OnPropertyChanged(); }
         }
+        /// <summary>Lube Oil: the titled section of the application's grades this item sits in (e.g. SUNISO &amp; EMKARATE OIL); empty = no section.</summary>
+        private string? _GradeGroup;
+        [StringLength(150)]
+        [Column("GradeGroup")]
+        public virtual string? GradeGroup
+        {
+            get => _GradeGroup;
+            set { if (_GradeGroup == value) return; OnPropertyChanging(); _GradeGroup = value; OnPropertyChanged(); }
+        }
         /// <summary>Lube Oil: the attachments a requisition with this item must carry, a list like [Running Hours, Oil Consumption]; empty = none.</summary>
         private string? _MandatoryAttachment;
         [Column("MandatoryAttachment")]
