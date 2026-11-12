@@ -173,9 +173,9 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _GradeGroup;
             set { if (_GradeGroup == value) return; OnPropertyChanging(); _GradeGroup = value; OnPropertyChanged(); }
         }
-        /// <summary>Item location; free text, no length limit (nvarchar(max)).</summary>
+        /// <summary>Item location; free text, no length limit (text).</summary>
         private string? _Location;
-        [Column("Location", TypeName = "nvarchar(max)")]
+        [Column("Location", TypeName = "text")]
         public virtual string? Location
         {
             get => _Location;
@@ -189,6 +189,22 @@ namespace Pupa.BusinessObjects.Beesuite
         {
             get => _Dimension;
             set { if (_Dimension == value) return; OnPropertyChanging(); _Dimension = value; OnPropertyChanged(); }
+        }
+        /// <summary>Item type; free text, no length limit (text).</summary>
+        private string? _Type;
+        [Column("Type", TypeName = "text")]
+        public virtual string? Type
+        {
+            get => _Type;
+            set { if (_Type == value) return; OnPropertyChanging(); _Type = value; OnPropertyChanged(); }
+        }
+        /// <summary>Item capacity; free text, no length limit (text).</summary>
+        private string? _Capacity;
+        [Column("Capacity", TypeName = "text")]
+        public virtual string? Capacity
+        {
+            get => _Capacity;
+            set { if (_Capacity == value) return; OnPropertyChanging(); _Capacity = value; OnPropertyChanged(); }
         }
         /// <summary>Lube Oil: the attachments a requisition with this item must carry, a list like [Running Hours, Oil Consumption]; empty = none.</summary>
         private string? _MandatoryAttachment;
