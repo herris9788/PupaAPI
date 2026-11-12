@@ -173,6 +173,23 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _GradeGroup;
             set { if (_GradeGroup == value) return; OnPropertyChanging(); _GradeGroup = value; OnPropertyChanged(); }
         }
+        /// <summary>Item location; free text, no length limit (nvarchar(max)).</summary>
+        private string? _Location;
+        [Column("Location", TypeName = "nvarchar(max)")]
+        public virtual string? Location
+        {
+            get => _Location;
+            set { if (_Location == value) return; OnPropertyChanging(); _Location = value; OnPropertyChanged(); }
+        }
+        /// <summary>Item dimension (display text).</summary>
+        private string? _Dimension;
+        [StringLength(150)]
+        [Column("Dimension")]
+        public virtual string? Dimension
+        {
+            get => _Dimension;
+            set { if (_Dimension == value) return; OnPropertyChanging(); _Dimension = value; OnPropertyChanged(); }
+        }
         /// <summary>Lube Oil: the attachments a requisition with this item must carry, a list like [Running Hours, Oil Consumption]; empty = none.</summary>
         private string? _MandatoryAttachment;
         [Column("MandatoryAttachment")]
