@@ -206,6 +206,14 @@ namespace Pupa.BusinessObjects.Beesuite
             get => _Capacity;
             set { if (_Capacity == value) return; OnPropertyChanging(); _Capacity = value; OnPropertyChanged(); }
         }
+        /// <summary>Item brand; free text, no length limit (text).</summary>
+        private string? _Brand;
+        [Column("Brand", TypeName = "text")]
+        public virtual string? Brand
+        {
+            get => _Brand;
+            set { if (_Brand == value) return; OnPropertyChanging(); _Brand = value; OnPropertyChanged(); }
+        }
         /// <summary>Lube Oil: the attachments a requisition with this item must carry, a list like [Running Hours, Oil Consumption]; empty = none.</summary>
         private string? _MandatoryAttachment;
         [Column("MandatoryAttachment")]
