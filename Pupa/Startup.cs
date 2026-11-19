@@ -32,6 +32,8 @@ namespace Pupa
         {
             AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
             AppContext.SetSwitch("Npgsql.DisableDateTimeInfinityConversions", true);
+            // Same 100 MB for IIS in-process hosting (Program.cs sets Kestrel's); IIS's own maxAllowedContentLength is in web.config.
+            services.Configure<IISServerOptions>(o => o.MaxRequestBodySize = 100 * 1024 * 1024);
             services.AddLocalization();
             services.AddHttpContextAccessor();
             services.AddHttpClient();
