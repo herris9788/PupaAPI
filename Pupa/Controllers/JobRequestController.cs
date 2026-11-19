@@ -6,8 +6,6 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Text.Json.Nodes;
-using Pupa.Services;
 
 namespace Pupa.Controllers
 {
@@ -39,55 +37,14 @@ namespace Pupa.Controllers
             IncludeFields = true,
         };
 
-        private readonly AttachmentUploadStore _uploads;
-
-        public JobRequestController(BeesuiteDbContext db, AttachmentUploadStore uploads)
+        public JobRequestController(BeesuiteDbContext db)
         {
             _db = db;
-            _uploads = uploads;
-        }
-
-        // An attachment of the Create body (JobRequest.Attachments or Jobs[].Attachments) may carry "UploadID" instead of "Base64":
-        // the file was sent in chunks first (AttachmentUploadController). Puts the uploaded Base64 text in its place; the ids are
-        // returned so the uploads are removed once the JobRequest is saved. Only the caller's own uploads can be used.
-        private async Task<(JsonElement Body, List<string> UploadIds)> ResolveUploads(JsonElement raw)
-        {
-            var node = JsonNode.Parse(raw.GetRawText());
-            var used = new List<string>();
-            if (node is not JsonObject root) return (raw, used);
-            var caller = AttachmentUploadController.Caller(User);
-            async Task Resolve(JsonNode? list)
-            {
-                if (list is not JsonArray arr) return;
-                foreach (var item in arr)
-                {
-                    if (item is not JsonObject att || att["UploadID"] is not JsonValue v || !v.TryGetValue<string>(out var id) || string.IsNullOrWhiteSpace(id)) continue;
-                    var meta = _uploads.Get(id, caller);
-                    att["Base64"] = await _uploads.ReadText(meta, HttpContext.RequestAborted);
-                    att.Remove("UploadID");
-                    used.Add(id);
-                }
-            }
-            await Resolve(root["Attachments"]);
-            if (root["Jobs"] is JsonArray jobs)
-                foreach (var job in jobs)
-                    if (job is JsonObject j) await Resolve(j["Attachments"]);
-            if (used.Count == 0) return (raw, used);
-            return (JsonSerializer.SerializeToElement(root), used);
         }
 
         [HttpPost("Create")]
         public async Task<IActionResult> CreateJobRequest([FromBody] JsonElement RawBody)
         {
-            List<string> uploadIds;
-            try
-            {
-                (RawBody, uploadIds) = await ResolveUploads(RawBody);
-            }
-            catch (AttachmentUploadStore.UploadException e)
-            {
-                return StatusCode(e.Status, new { error = $"Attachment upload: {e.Message}" });
-            }
             try
             {
                 JobRequest? Body;
@@ -283,7 +240,6 @@ namespace Pupa.Controllers
                     job.JobDetails = new ObservableCollection<JobDetail>();
                 }
                 Body.Attachments = new ObservableCollection<JobRequestAttachment>();
-                foreach (var id in uploadIds) _uploads.Delete(id);
                 return Ok(Body);
             }
             catch (DbUpdateException ex)
