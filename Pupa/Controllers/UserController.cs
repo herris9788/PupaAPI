@@ -11,7 +11,7 @@ namespace Pupa.Controllers
 {
 
     [Route("beesuite/api/[controller]")]
-    public class UserController : Controller
+    public partial class UserController : Controller
     {
         private readonly IConfiguration _configuration;
         private readonly BeesuiteDbContext db;
@@ -1190,29 +1190,38 @@ namespace Pupa.Controllers
         /// rules were never reachable there for Job Requests).
         /// </summary>
         private async Task<int> CountPendingJobRequestsForApprover(User user)
+            => (await GetPendingJobRequestsForApprover(user)).Count;
+
+        /// <summary>
+        /// The Job Requests whose current approval turn is [user]'s (the list behind
+        /// CountPendingJobRequestsForApprover, which only counts it). [vesselIds] overrides the
+        /// default scope (the user's UserVesselRel vessels) — Approval/Vessels passes every vessel
+        /// for a SYSADMIN. Rows come back without tracking and with Jobs/JobDetails loaded.
+        /// </summary>
+        private async Task<List<JobRequest>> GetPendingJobRequestsForApprover(User user, List<int>? vesselIds = null)
         {
-            var VesselIdsInScope = await db.UserVesselRel.AsNoTracking()
+            var VesselIdsInScope = vesselIds ?? await db.UserVesselRel.AsNoTracking()
                 .Where(x => x.UserID == user.ID)
                 .Select(x => x.VesselID)
                 .Distinct()
                 .ToListAsync();
-            if (!VesselIdsInScope.Any()) return 0;
+            var Result = new List<JobRequest>();
+            if (!VesselIdsInScope.Any()) return Result;
 
             // JobRequest.VesselInventoryUserRowID holds InventoryUser.ID (the
             // PK) despite the name — confirmed against real data (see
             // PupaEntityHooks.SyncLegacyMirrorForVessel for the same
             // finding), so it's compared directly against InventoryUser.ID
             // via UserVesselRel.VesselID (also the PK) here.
-            var PendingJobs = await db.JobRequest
+            var PendingJobs = await db.JobRequest.AsNoTracking()
                 .Include(j => j.Jobs).ThenInclude(jb => jb.JobDetails)
                 .Where(j => j.Type == "PUPA" && j.Status == "Submitted" && j.ApprovalStatus == "Pending"
                          && j.VesselInventoryUserRowID.HasValue
                          && VesselIdsInScope.Contains(j.VesselInventoryUserRowID.Value))
                 .ToListAsync();
-            if (!PendingJobs.Any()) return 0;
+            if (!PendingJobs.Any()) return Result;
 
             var UsernameLower = user.Username.ToLower();
-            int Count = 0;
 
             // The approver order saved on a Job Request at submit (an ADMIN/OS
             // requester goes ahead of the ADMIN approvers under him) — see
@@ -1278,7 +1287,7 @@ namespace Pupa.Controllers
                     // Usernames field) — any one of them counts as pending for them.
                     if (ChainByLevel.TryGetValue(PendingLevel, out var Unames)
                         && Unames.Any(u => !string.IsNullOrEmpty(u) && u.ToLower() == UsernameLower))
-                        Count++;
+                        Result.Add(Job);
                 }
                 catch
                 {
@@ -1286,7 +1295,7 @@ namespace Pupa.Controllers
                 }
             }
 
-            return Count;
+            return Result;
         }
 
         /// <summary>
