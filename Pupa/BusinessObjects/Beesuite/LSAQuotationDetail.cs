@@ -15,6 +15,11 @@ namespace Pupa.BusinessObjects.Beesuite
         private string? _ItemName;
         private decimal? _Quantity;
         private string? _UOM;
+        private decimal? _Price;
+        private decimal? _Amount;
+        private decimal? _LastPrice;
+        private string? _Note;
+        private int _DeliveryDays;
 
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -58,6 +63,46 @@ namespace Pupa.BusinessObjects.Beesuite
         {
             get { return _UOM; }
             set { OnPropertyChanging(); _UOM = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Harga satuan (dari LSA job).</summary>
+        [Column("Price")]
+        public virtual decimal? Price
+        {
+            get { return _Price; }
+            set { OnPropertyChanging(); _Price = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Quantity x Price.</summary>
+        [Column("Amount")]
+        public virtual decimal? Amount
+        {
+            get { return _Amount; }
+            set { OnPropertyChanging(); _Amount = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Harga beli terakhir.</summary>
+        [Column("LastPrice")]
+        public virtual decimal? LastPrice
+        {
+            get { return _LastPrice; }
+            set { OnPropertyChanging(); _LastPrice = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Catatan baris.</summary>
+        [Column("Note")]
+        public virtual string? Note
+        {
+            get { return _Note; }
+            set { OnPropertyChanging(); _Note = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Lead time baris ini, hari setelah SPK.</summary>
+        [Column("DeliveryDays")]
+        public virtual int DeliveryDays
+        {
+            get { return _DeliveryDays; }
+            set { OnPropertyChanging(); _DeliveryDays = value; OnPropertyChanged(); }
         }
 
         public virtual LSAQuotation? Quotation { get; set; }

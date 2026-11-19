@@ -17,6 +17,9 @@ namespace Pupa.BusinessObjects.Beesuite
         private string? _Attachment;
         private bool _IsFinal;
         private bool _Proceed;
+        private bool _NoOffer;
+        private int _DeliveryDays;
+        private bool _TaxInclusive;
         private DateTime _CreatedAt = DateTime.Now;
 
         [Key]
@@ -77,6 +80,30 @@ namespace Pupa.BusinessObjects.Beesuite
         {
             get { return _Proceed; }
             set { OnPropertyChanging(); _Proceed = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Supplier menjawab No Offer di Vendor Portal (tanpa file, tanpa harga).</summary>
+        [Column("NoOffer")]
+        public virtual bool NoOffer
+        {
+            get { return _NoOffer; }
+            set { OnPropertyChanging(); _NoOffer = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Lead time seluruh quotation, hari setelah SPK (Vendor Portal).</summary>
+        [Column("DeliveryDays")]
+        public virtual int DeliveryDays
+        {
+            get { return _DeliveryDays; }
+            set { OnPropertyChanging(); _DeliveryDays = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Harga sudah termasuk pajak.</summary>
+        [Column("TaxInclusive")]
+        public virtual bool TaxInclusive
+        {
+            get { return _TaxInclusive; }
+            set { OnPropertyChanging(); _TaxInclusive = value; OnPropertyChanged(); }
         }
 
         [Column("CreatedAt")]
