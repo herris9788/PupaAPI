@@ -35,6 +35,8 @@ namespace Pupa.Controllers
         {
             try
             {
+                // These numbers must always be live: never let a browser or proxy keep a copy.
+                Response.Headers["Cache-Control"] = "no-store, no-cache";
                 var User = await ResolveApprovalUser(Query);
                 bool Team = string.Equals(Scope, "team", StringComparison.OrdinalIgnoreCase);
                 string Me = User.Username;
@@ -229,6 +231,8 @@ namespace Pupa.Controllers
         {
             try
             {
+                // These numbers must always be live: never let a browser or proxy keep a copy.
+                Response.Headers["Cache-Control"] = "no-store, no-cache";
                 var User = await ResolveApprovalUser(Query);
                 bool Team = string.Equals(Scope, "team", StringComparison.OrdinalIgnoreCase);
                 string Me = User.Username;
