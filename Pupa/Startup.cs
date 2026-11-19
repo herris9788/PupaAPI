@@ -137,6 +137,7 @@ namespace Pupa
             services.AddScoped<IFtpService, FtpService>();
             services.AddScoped<RequisitionDynamicFormService>();
             services.AddSingleton<DatabaseRestoreService>();
+            services.AddSingleton<Pupa.Services.AttachmentUploadStore>();
             services.AddStackExchangeRedisCache(options =>
             {
                 options.Configuration = "172.16.9.29:6379,password=Hastalavista,defaultDatabase=0";
