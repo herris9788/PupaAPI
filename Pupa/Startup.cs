@@ -136,6 +136,7 @@ namespace Pupa
             });
             services.AddScoped<IFtpService, FtpService>();
             services.AddScoped<RequisitionDynamicFormService>();
+            services.AddSingleton<S3StorageService>();
             services.AddSingleton<DatabaseRestoreService>();
             services.AddStackExchangeRedisCache(options =>
             {

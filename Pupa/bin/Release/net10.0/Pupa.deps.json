@@ -8,6 +8,7 @@
     ".NETCoreApp,Version=v10.0": {
       "Pupa/1.0.0": {
         "dependencies": {
+          "AWSSDK.S3": "4.1.2",
           "BouncyCastle.Cryptography": "2.7.0",
           "DevOps.Models": "1.0.10",
           "FluentFTP": "53.0.2",
@@ -27,6 +28,37 @@
         },
         "runtime": {
           "Pupa.dll": {}
+        }
+      },
+      "AWSSDK.Core/4.1.1.1": {
+        "dependencies": {
+          "AWSSDK.Extensions.Numerics": "4.1.0",
+          "System.IO.Hashing": "11.0.0"
+        },
+        "runtime": {
+          "lib/net10.0/AWSSDK.Core.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.1.1.1"
+          }
+        }
+      },
+      "AWSSDK.Extensions.Numerics/4.1.0": {
+        "runtime": {
+          "lib/net10.0/AWSSDK.Extensions.Numerics.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.1.0.0"
+          }
+        }
+      },
+      "AWSSDK.S3/4.1.2": {
+        "dependencies": {
+          "AWSSDK.Core": "4.1.1.1"
+        },
+        "runtime": {
+          "lib/net10.0/AWSSDK.S3.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.1.2.0"
+          }
         }
       },
       "Azure.Core/1.47.1": {
@@ -995,6 +1027,14 @@
           }
         }
       },
+      "System.IO.Hashing/11.0.0": {
+        "runtime": {
+          "lib/net10.0/System.IO.Hashing.dll": {
+            "assemblyVersion": "11.0.0.0",
+            "fileVersion": "11.0.26.53018"
+          }
+        }
+      },
       "System.Memory.Data/8.0.1": {
         "runtime": {
           "lib/net8.0/System.Memory.Data.dll": {
@@ -1018,6 +1058,27 @@
       "type": "project",
       "serviceable": false,
       "sha512": ""
+    },
+    "AWSSDK.Core/4.1.1.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-paZNy+g/hXMCsEpWvmOFr14x9gVzIY2JRSzSk+nXpKcnaASxEFBMWE4CNBuI/WwGN1ygTwojRTsPRn3yXuhSYQ==",
+      "path": "awssdk.core/4.1.1.1",
+      "hashPath": "awssdk.core.4.1.1.1.nupkg.sha512"
+    },
+    "AWSSDK.Extensions.Numerics/4.1.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-hhoiXT1aUyVgIiQbQoqG3L1EEneqXDh2GKyH5izUlO6Rzi9GAAi8S6mlLiVwow23+EGg77zHjdmUi+ia3RSUTg==",
+      "path": "awssdk.extensions.numerics/4.1.0",
+      "hashPath": "awssdk.extensions.numerics.4.1.0.nupkg.sha512"
+    },
+    "AWSSDK.S3/4.1.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-vGRpeXIxK7uRRHzVIrp2dYDri4wwlerUutG8TG7jHMolb3hX6Zu6VVDZpmwB8AlTIZ9BKLIV+V4Oi4xEsamZsQ==",
+      "path": "awssdk.s3/4.1.2",
+      "hashPath": "awssdk.s3.4.1.2.nupkg.sha512"
     },
     "Azure.Core/1.47.1": {
       "type": "package",
@@ -1480,6 +1541,13 @@
       "sha512": "sha512-GJw3bYkWpOgvN3tJo5X4lYUeIFA2HD293FPUhKmp7qxS+g5ywAb34Dnd3cDAFLkcMohy5XTpoaZ4uAHuw0uSPQ==",
       "path": "system.identitymodel.tokens.jwt/8.0.1",
       "hashPath": "system.identitymodel.tokens.jwt.8.0.1.nupkg.sha512"
+    },
+    "System.IO.Hashing/11.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-U+Bv2qCYt6eONi+arSP0QIp4uTO6os6uceBsqiAwruZ+Wo2HrRhO/0tj38M9URJtS+4DhAtT3ka2TGNFYsnhyQ==",
+      "path": "system.io.hashing/11.0.0",
+      "hashPath": "system.io.hashing.11.0.0.nupkg.sha512"
     },
     "System.Memory.Data/8.0.1": {
       "type": "package",

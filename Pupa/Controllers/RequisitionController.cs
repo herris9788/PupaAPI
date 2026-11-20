@@ -35,18 +35,108 @@ namespace Pupa.Controllers
         private readonly BeesuiteDbContext _db;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly Pupa.Services.RequisitionDynamicFormService _dynamicForm;
+        private readonly Pupa.Services.S3StorageService _s3;
 
-        public RequisitionController(BeesuiteDbContext db, IConfiguration configuration, IHttpClientFactory httpClientFactory, Pupa.Services.RequisitionDynamicFormService dynamicForm)
+        // Only keys under this prefix are served by GetAttachmentFile, so a Path forged through OData cannot read other bucket objects.
+        private const string S3RequisitionKeyPrefix = "requisition/";
+
+        public RequisitionController(BeesuiteDbContext db, IConfiguration configuration, IHttpClientFactory httpClientFactory, Pupa.Services.RequisitionDynamicFormService dynamicForm, Pupa.Services.S3StorageService s3)
         {
             _db = db;
             _configuration = configuration;
             _httpClientFactory = httpClientFactory;
             _dynamicForm = dynamicForm;
+            _s3 = s3;
         }
 
 
         [HttpPost("Create")]
-        public async Task<IActionResult> CreateRequisition([FromBody] Requisition Body)
+        public Task<IActionResult> CreateRequisition([FromBody] Requisition Body) => CreateCoreAsync(Body, null);
+
+        /// <summary>
+        /// Same as Create, but every attachment Base64 (header + detail, except
+        /// InvoiceReceipt) is moved to S3 before saving: Attachment.Path = S3 object URL,
+        /// Base64 = null, IsBinary = false. Read the file back with GET Attachment/{id}/File.
+        /// </summary>
+        [HttpPost("CreateV2")]
+        public async Task<IActionResult> CreateRequisitionV2([FromBody] Requisition Body)
+        {
+            if (!_s3.IsEnabled)
+                return StatusCode(503, new { Message = "S3 storage is not configured." });
+
+            var uploadedKeys = new List<string>();
+            var result = await CreateCoreAsync(Body, () => MoveAttachmentsToS3Async(Body, uploadedKeys));
+            if (result is not OkObjectResult)
+            {
+                foreach (var key in uploadedKeys)
+                {
+                    try { await _s3.DeleteAsync(key); }
+                    catch { /* best effort: the object stays orphaned in the bucket */ }
+                }
+            }
+            return result;
+        }
+
+        /// <summary>Streams an attachment: Base64 when present, otherwise the S3 object at Path.</summary>
+        [HttpGet("Attachment/{id:int}/File")]
+        public async Task<IActionResult> GetAttachmentFile(int id, CancellationToken cancellationToken)
+        {
+            var attachment = await _db.Attachment.AsNoTracking().FirstOrDefaultAsync(x => x.ID == id, cancellationToken);
+            if (attachment == null)
+                return NotFound();
+
+            var contentType = ResolveAttachmentContentType(attachment);
+            var disposition = new System.Net.Mime.ContentDisposition { Inline = true, FileName = attachment.FileName ?? $"attachment-{id}" }.ToString();
+
+            if (!string.IsNullOrWhiteSpace(attachment.Base64))
+            {
+                Response.Headers.ContentDisposition = disposition;
+                return File(DecodeAttachmentBase64(attachment), contentType);
+            }
+
+            // ".." is rejected: the request URI collapses it, so "requisition/../x" would read objects outside the prefix.
+            var key = _s3.KeyFromUrl(attachment.Path);
+            if (key == null || !key.StartsWith(S3RequisitionKeyPrefix, StringComparison.Ordinal) || key.Contains("..") || !_s3.IsEnabled)
+                return NotFound();
+
+            try
+            {
+                var obj = await _s3.GetAsync(key, cancellationToken);
+                Response.Headers.ContentDisposition = disposition;
+                return File(obj.ResponseStream, contentType);
+            }
+            catch (Amazon.S3.AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                return NotFound();
+            }
+        }
+
+        private async Task MoveAttachmentsToS3Async(Requisition body, List<string> uploadedKeys)
+        {
+            var attachments = (body.RequisitionAttachmentRels ?? new()).Select(r => (r.Type, r.Attachment))
+                .Concat((body.RequisitionDetails ?? new())
+                    .SelectMany(d => d.RequisitionDetailAttachmentRels ?? new())
+                    .Select(r => (r.Type, r.Attachment)));
+
+            foreach (var (type, attachment) in attachments)
+            {
+                // InvoiceReceipt stays Base64: VerifyNota decodes it as bytes.
+                if (attachment == null || string.IsNullOrWhiteSpace(attachment.Base64) ||
+                    string.Equals(type, InvoiceReceiptType, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var key = $"{S3RequisitionKeyPrefix}{Guid.NewGuid():N}{Path.GetExtension(attachment.FileName ?? "").ToLowerInvariant()}";
+                await _s3.UploadAsync(key, DecodeAttachmentBase64(attachment), ResolveAttachmentContentType(attachment));
+                uploadedKeys.Add(key);
+
+                attachment.Path = _s3.ObjectUrl(key);
+                attachment.Base64 = null;
+                attachment.IsBinary = false;
+            }
+        }
+
+        /// <param name="beforeSave">Runs after every validation passed, right before the first write (V2 uploads to S3 here).</param>
+        private async Task<IActionResult> CreateCoreAsync(Requisition Body, Func<Task>? beforeSave)
         {
             try
             {
@@ -109,7 +199,13 @@ namespace Pupa.Controllers
                     {
                         return BadRequest(new { Message = "Validasi form dinamis gagal.", dfEx.Errors });
                     }
+                }
 
+                if (beforeSave != null)
+                    await beforeSave();
+
+                if (hasDynamicForm)
+                {
                     await using var reqTx = await _db.Database.BeginTransactionAsync();
                     await _db.AddAsync(Body);
                     await _db.SaveChangesAsync();
