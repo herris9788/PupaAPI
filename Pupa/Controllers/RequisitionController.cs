@@ -51,12 +51,39 @@ namespace Pupa.Controllers
 
 
         [HttpPost("Create")]
-        public Task<IActionResult> CreateRequisition([FromBody] Requisition Body) => CreateCoreAsync(Body, null);
+        public Task<IActionResult> CreateRequisition([FromBody] Requisition Body) => CreateCoreAsync(Body);
 
         /// <summary>
-        /// Same as Create, but every attachment Base64 (header + detail, except
-        /// InvoiceReceipt) is moved to S3 before saving: Attachment.Path = S3 object URL,
-        /// Base64 = null, IsBinary = false. Read the file back with GET Attachment/{id}/File.
+        /// CreateV2 step 1: uploads one file (multipart field "file") to S3 and returns its Url.
+        /// The frontend sends that Url as Attachment.Path in CreateV2.
+        /// </summary>
+        [HttpPost("Attachment/Upload")]
+        public async Task<IActionResult> UploadAttachment(IFormFile file, CancellationToken cancellationToken)
+        {
+            if (!_s3.IsEnabled)
+                return StatusCode(503, new { Message = "S3 storage is not configured." });
+            if (file == null || file.Length == 0)
+                return BadRequest("No file uploaded.");
+
+            // Extension only when plain alphanumeric: it becomes part of the object URL.
+            var extension = Path.GetExtension(file.FileName ?? "").ToLowerInvariant();
+            if (extension.Length is < 2 or > 11 || !extension.Skip(1).All(char.IsAsciiLetterOrDigit))
+                extension = "";
+            // Content type from the extension, not the client header, so the file is never served as e.g. text/html.
+            var mimeType = ResolveAttachmentContentType(new Attachment { FileName = file.FileName });
+            var key = $"{S3RequisitionKeyPrefix}{Guid.NewGuid():N}{extension}";
+
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms, cancellationToken);
+            await _s3.UploadAsync(key, ms.ToArray(), mimeType, cancellationToken);
+
+            return Ok(new { Url = _s3.ObjectUrl(key), file.FileName, MimeType = mimeType, Size = file.Length });
+        }
+
+        /// <summary>
+        /// CreateV2 step 2: same body as Create, but each Attachment carries Path = Url from
+        /// POST Attachment/Upload instead of Base64. Saved as Path = Url, Base64 = null, IsBinary = false.
+        /// Read the file back with GET Attachment/{id}/File.
         /// </summary>
         [HttpPost("CreateV2")]
         public async Task<IActionResult> CreateRequisitionV2([FromBody] Requisition Body)
@@ -64,17 +91,18 @@ namespace Pupa.Controllers
             if (!_s3.IsEnabled)
                 return StatusCode(503, new { Message = "S3 storage is not configured." });
 
-            var uploadedKeys = new List<string>();
-            var result = await CreateCoreAsync(Body, () => MoveAttachmentsToS3Async(Body, uploadedKeys));
-            if (result is not OkObjectResult)
+            if (Body != null)
             {
-                foreach (var key in uploadedKeys)
+                foreach (var attachment in AllAttachments(Body))
                 {
-                    try { await _s3.DeleteAsync(key); }
-                    catch { /* best effort: the object stays orphaned in the bucket */ }
+                    // Only Urls made by Attachment/Upload: a foreign Path would later be served by GetAttachmentFile.
+                    if (!string.IsNullOrWhiteSpace(attachment.Base64) || RequisitionS3Key(attachment) == null)
+                        return BadRequest(new { Message = $"Attachment '{attachment.FileName}': send Path = Url from POST Requisition/Attachment/Upload, not Base64." });
+                    attachment.IsBinary = false;
                 }
             }
-            return result;
+
+            return await CreateCoreAsync(Body);
         }
 
         /// <summary>Streams an attachment: Base64 when present, otherwise the S3 object at Path.</summary>
@@ -94,9 +122,8 @@ namespace Pupa.Controllers
                 return File(DecodeAttachmentBase64(attachment), contentType);
             }
 
-            // ".." is rejected: the request URI collapses it, so "requisition/../x" would read objects outside the prefix.
-            var key = _s3.KeyFromUrl(attachment.Path);
-            if (key == null || !key.StartsWith(S3RequisitionKeyPrefix, StringComparison.Ordinal) || key.Contains("..") || !_s3.IsEnabled)
+            var key = RequisitionS3Key(attachment);
+            if (key == null)
                 return NotFound();
 
             try
@@ -111,32 +138,36 @@ namespace Pupa.Controllers
             }
         }
 
-        private async Task MoveAttachmentsToS3Async(Requisition body, List<string> uploadedKeys)
-        {
-            var attachments = (body.RequisitionAttachmentRels ?? new()).Select(r => (r.Type, r.Attachment))
+        private static IEnumerable<Attachment> AllAttachments(Requisition body)
+            => (body.RequisitionAttachmentRels ?? new()).Select(r => r.Attachment)
                 .Concat((body.RequisitionDetails ?? new())
                     .SelectMany(d => d.RequisitionDetailAttachmentRels ?? new())
-                    .Select(r => (r.Type, r.Attachment)));
+                    .Select(r => r.Attachment))
+                .OfType<Attachment>();
 
-            foreach (var (type, attachment) in attachments)
-            {
-                // InvoiceReceipt stays Base64: VerifyNota decodes it as bytes.
-                if (attachment == null || string.IsNullOrWhiteSpace(attachment.Base64) ||
-                    string.Equals(type, InvoiceReceiptType, StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                var key = $"{S3RequisitionKeyPrefix}{Guid.NewGuid():N}{Path.GetExtension(attachment.FileName ?? "").ToLowerInvariant()}";
-                await _s3.UploadAsync(key, DecodeAttachmentBase64(attachment), ResolveAttachmentContentType(attachment));
-                uploadedKeys.Add(key);
-
-                attachment.Path = _s3.ObjectUrl(key);
-                attachment.Base64 = null;
-                attachment.IsBinary = false;
-            }
+        // ".." is rejected: the request URI collapses it, so "requisition/../x" would read objects outside the prefix.
+        private string? RequisitionS3Key(Attachment attachment)
+        {
+            var key = _s3.KeyFromUrl(attachment.Path);
+            return key != null && key.StartsWith(S3RequisitionKeyPrefix, StringComparison.Ordinal) && !key.Contains("..") && _s3.IsEnabled
+                ? key : null;
         }
 
-        /// <param name="beforeSave">Runs after every validation passed, right before the first write (V2 uploads to S3 here).</param>
-        private async Task<IActionResult> CreateCoreAsync(Requisition Body, Func<Task>? beforeSave)
+        /// <summary>Attachment bytes: Base64 when present (V1), otherwise the S3 object at Path (V2).</summary>
+        private async Task<byte[]> ReadAttachmentBytesAsync(Attachment attachment, CancellationToken ct)
+        {
+            if (!string.IsNullOrWhiteSpace(attachment.Base64))
+                return DecodeAttachmentBase64(attachment);
+
+            var key = RequisitionS3Key(attachment)
+                ?? throw new InvalidOperationException("Attachment has no Base64 and no valid S3 Path.");
+            using var obj = await _s3.GetAsync(key, ct);
+            using var ms = new MemoryStream();
+            await obj.ResponseStream.CopyToAsync(ms, ct);
+            return ms.ToArray();
+        }
+
+        private async Task<IActionResult> CreateCoreAsync(Requisition Body)
         {
             try
             {
@@ -200,9 +231,6 @@ namespace Pupa.Controllers
                         return BadRequest(new { Message = "Validasi form dinamis gagal.", dfEx.Errors });
                     }
                 }
-
-                if (beforeSave != null)
-                    await beforeSave();
 
                 if (hasDynamicForm)
                 {
@@ -626,7 +654,7 @@ namespace Pupa.Controllers
             byte[] fileBytes;
             try
             {
-                fileBytes = DecodeAttachmentBase64(attachment);
+                fileBytes = await ReadAttachmentBytesAsync(attachment, cancellationToken);
             }
             catch (Exception ex)
             {
